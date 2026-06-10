@@ -1,0 +1,74 @@
+package gamestate
+
+// World-entity component readers (structure from reference layout, field names from
+// reference layout, offsets re-verified live 2026-06-10 — reference layout's numeric offsets are an
+// older patch). All resolve their component by name, so they survive vtable drift.
+
+const (
+	// Positioned.Reaction byte: 0 = hostile/enemy, 1 = ally/friendly (player, player
+	// summons, allied NPCs). Verified live 2026-06-10 on a minion build — summoned
+	// skeletons read 1, hostile monsters read 0.
+	positionedReactionOff = 0x1E0
+
+	// Targetable flag block shifted +0x18 vs reference layout (same drift as Life).
+	targetableIsTargetableOff = 0x69
+	targetableIsHighlightOff  = 0x6A
+	targetableIsTargetedOff   = 0x6B
+	targetableHiddenOff       = 0x71
+
+	transitionableStateOff = 0x120 // Transitionable: i16 CurrentStateEnum (benches read 2)
+)
+
+// ReadReaction reads the Positioned.Reaction byte: 0 = hostile/enemy, 1 = ally
+// (player, summons, allied NPCs). Verified live on a minion build.
+func ReadReaction(r Reader, entity uint64) (byte, bool) {
+	pos := ResolveComponentByName(r, entity, "Positioned")
+	if pos == 0 {
+		return 0, false
+	}
+	return ReadByte(r, pos+positionedReactionOff), true
+}
+
+// IsHostile reports whether an entity's Positioned.Reaction marks it an enemy
+// (reaction 0). Entities without a Positioned component default to false.
+func IsHostile(r Reader, entity uint64) bool {
+	rc, ok := ReadReaction(r, entity)
+	return ok && rc == 0
+}
+
+type TargetableState struct {
+	IsTargetable    bool
+	IsHighlightable bool
+	IsTargeted      bool // currently targeted by the player
+	Hidden          bool // hidden from player
+}
+
+// ReadTargetable reads the Targetable component flags. Verified live 2026-06-10:
+// clickable town objects (stash, benches) read IsTargetable=1, Hidden=0.
+func ReadTargetable(r Reader, entity uint64) (TargetableState, bool) {
+	t := ResolveComponentByName(r, entity, "Targetable")
+	if t == 0 {
+		return TargetableState{}, false
+	}
+	return TargetableState{
+		IsTargetable:    ReadByte(r, t+targetableIsTargetableOff) != 0,
+		IsHighlightable: ReadByte(r, t+targetableIsHighlightOff) != 0,
+		IsTargeted:      ReadByte(r, t+targetableIsTargetedOff) != 0,
+		Hidden:          ReadByte(r, t+targetableHiddenOff) != 0,
+	}, true
+}
+
+// ReadTransitionableState reads Transitionable.CurrentStateEnum (door/lever/bench
+// state). Offset confirmed live (crafting benches read 2); per-object value
+// semantics (open vs closed) need an interactable door to enumerate.
+func ReadTransitionableState(r Reader, entity uint64) (int16, bool) {
+	tr := ResolveComponentByName(r, entity, "Transitionable")
+	if tr == 0 {
+		return 0, false
+	}
+	b, err := r.ReadBytes(tr+transitionableStateOff, 2)
+	if err != nil || len(b) < 2 {
+		return 0, false
+	}
+	return int16(b[0]) | int16(b[1])<<8, true
+}
