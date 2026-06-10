@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"sync/atomic"
 )
 
@@ -75,13 +76,14 @@ type ModInfo struct {
 }
 
 var (
-	baseItemsLoaded atomic.Pointer[map[string]BaseItemEntry]
-	monstersLoaded  atomic.Pointer[map[string]MonsterEntry]
-	buffsLoaded     atomic.Pointer[map[string]BuffEntry]
-	skillsLoaded    atomic.Pointer[map[string]SkillEntry]
-	statsLoaded     atomic.Pointer[[]string]
-	statDescsLoaded atomic.Pointer[map[string]StatDescription]
-	modsInfoLoaded  atomic.Pointer[map[string]ModInfo]
+	baseItemsLoaded    atomic.Pointer[map[string]BaseItemEntry]
+	monstersLoaded     atomic.Pointer[map[string]MonsterEntry]
+	buffsLoaded        atomic.Pointer[map[string]BuffEntry]
+	skillsLoaded       atomic.Pointer[map[string]SkillEntry]
+	statsLoaded        atomic.Pointer[[]string]
+	statDescsLoaded    atomic.Pointer[map[string]StatDescription]
+	modsInfoLoaded     atomic.Pointer[map[string]ModInfo]
+	passiveNodesLoaded atomic.Pointer[map[int]PassiveNode]
 )
 
 // ModInfoByID returns the data/mods.json entry for a mod id (ok=false if absent).
@@ -129,6 +131,16 @@ func LoadStaticData(dir string) error {
 	var mods map[string]ModInfo
 	if err := loadJSON(filepath.Join(dir, "mods.json"), &mods); err == nil {
 		modsInfoLoaded.Store(&mods)
+	}
+	var pn map[string]PassiveNode
+	if err := loadJSON(filepath.Join(dir, "passive_nodes.json"), &pn); err == nil {
+		nodes := make(map[int]PassiveNode, len(pn))
+		for k, v := range pn {
+			if id, err := strconv.Atoi(k); err == nil {
+				nodes[id] = v
+			}
+		}
+		passiveNodesLoaded.Store(&nodes)
 	}
 	return nil
 }
