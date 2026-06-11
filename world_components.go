@@ -99,3 +99,29 @@ func ReadStateMachineState(r Reader, entity uint64, index int) (uint32, bool) {
 	}
 	return ReadU32(r, begin+uint64(index)*stateMachineValueStride), true
 }
+
+const (
+	stateMachineTimersBeginOff = 0x178
+	stateMachineTimersEndOff   = 0x180
+)
+
+// ReadStateMachineTimer reads the timer paired with a StateMachine slot, from GGG's
+// GetStateTimer getter (FUN_141f5f8f0): a second vector [+0x178,+0x180) stride 8 selected
+// by the same name->index map @+0x158 as ReadStateMachineState, value wrapped as a float.
+// Gives an encounter/altar state's elapsed/remaining time at the same slot index.
+func ReadStateMachineTimer(r Reader, entity uint64, index int) (float32, bool) {
+	sm := ResolveComponentByName(r, entity, "StateMachine")
+	if sm == 0 {
+		return 0, false
+	}
+	begin := ReadU64(r, sm+stateMachineTimersBeginOff)
+	end := ReadU64(r, sm+stateMachineTimersEndOff)
+	if begin < HeapLo || end < begin {
+		return 0, false
+	}
+	n := (end - begin) / stateMachineValueStride
+	if index < 0 || uint64(index) >= n {
+		return 0, false
+	}
+	return ReadFloat32(r, begin+uint64(index)*stateMachineValueStride), true
+}
