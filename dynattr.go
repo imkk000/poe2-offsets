@@ -222,3 +222,103 @@ func ReadBloodyAuraIntensity(r Reader, entity uint64) (float32, bool) {
 	}
 	return ReadFloat32(r, obj+0x18), true
 }
+
+const hashValueInt = 0x0B
+
+func ReadEntityHashStatInt(r Reader, entity uint64, hash uint32) (int32, bool) {
+	entry, ok := hashEntry(r, entity+entityStatStoreOff, hash)
+	if !ok {
+		return 0, false
+	}
+	vbegin := ReadU64(r, entry+hashEntryValueOff)
+	vend := ReadU64(r, entry+hashEntryValueOff+8)
+	if vbegin < HeapLo || vbegin >= vend {
+		return 0, false
+	}
+	if byte(ReadU32(r, vbegin+hashValueTypeOff)) != hashValueInt {
+		return 0, false
+	}
+	return int32(ReadU32(r, vbegin)), true
+}
+
+const (
+	archnemesisPetrifyHash      = 0xCAB9C201
+	closestChaosOrbDistanceHash = 0xA7D91177
+	nethermancerSoulEffectHash  = 0xF295BE54
+	detonateDeadDriverHash      = 0x1C4B4AC9
+	chronomancerArmourFadeHash  = 0xD8AE4C32
+	crystalariumBootsHash       = 0xA441C4A4
+	lithomancerBrightnessHash   = 0xD9F60BBB
+
+	frozenChainLinksHash = 0x51EA8F5A
+)
+
+func ReadArchnemesisPetrifyAmount(r Reader, entity uint64) (float32, bool) {
+	return ReadEntityHashStat(r, entity, archnemesisPetrifyHash)
+}
+
+func ReadClosestChaosOrbDistance(r Reader, entity uint64) (float32, bool) {
+	return ReadEntityHashStat(r, entity, closestChaosOrbDistanceHash)
+}
+
+func ReadNethermancerSoulEffect(r Reader, entity uint64) (float32, bool) {
+	return ReadEntityHashStat(r, entity, nethermancerSoulEffectHash)
+}
+
+func ReadDetonateDeadDriver(r Reader, entity uint64) (float32, bool) {
+	return ReadEntityHashStat(r, entity, detonateDeadDriverHash)
+}
+
+func ReadChronomancerArmourGemFade(r Reader, entity uint64) (float32, bool) {
+	return ReadEntityHashStat(r, entity, chronomancerArmourFadeHash)
+}
+
+func ReadCrystalariumBootsProgress(r Reader, entity uint64) (float32, bool) {
+	return ReadEntityHashStat(r, entity, crystalariumBootsHash)
+}
+
+func ReadLithomancerArmourBrightness(r Reader, entity uint64) (float32, bool) {
+	return ReadEntityHashStat(r, entity, lithomancerBrightnessHash)
+}
+
+func ReadFrozenChainLinks(r Reader, entity uint64) (int32, bool) {
+	return ReadEntityHashStatInt(r, entity, frozenChainLinksHash)
+}
+
+const (
+	explodeCorpseKey = 0xD2F2
+	coveredInOilKey  = 0x6916
+)
+
+func ReadExplodeCorpseProgress(r Reader, entity uint64) (float32, bool) {
+	obj, ok := resolveEntityEffect(r, entity, explodeCorpseKey)
+	if !ok {
+		return 0, false
+	}
+	denom := ReadFloat32(r, obj+0x2c)
+	if denom == 0 {
+		return 0, false
+	}
+	return ReadFloat32(r, obj+0x28) / denom, true
+}
+
+func ReadCoveredInOilEffect(r Reader, entity uint64) (a, b float32, ok bool) {
+	obj, found := resolveEntityEffect(r, entity, coveredInOilKey)
+	if !found {
+		return 0, 0, false
+	}
+	return ReadFloat32(r, obj+0x30), ReadFloat32(r, obj+0x34), true
+}
+
+const (
+	archnemesisHotHTCorruptionStatKey = 0x3ADC
+	demonFormSpellBuffStatKey         = 0x4E7B
+)
+
+func ReadArchnemesisHotHTCorruption(r Reader, entity uint64) (int32, bool) {
+	return ReadPlayerStatKey(r, entity, archnemesisHotHTCorruptionStatKey)
+}
+
+func ReadDemonFormSpellBuffStacks(r Reader, entity uint64) (int32, bool) {
+	return ReadPlayerStatKey(r, entity, demonFormSpellBuffStatKey)
+}
