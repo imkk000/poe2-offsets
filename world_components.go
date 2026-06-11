@@ -71,3 +71,31 @@ func ReadTransitionableState(r Reader, entity uint64) (int16, bool) {
 	}
 	return int16(b[0]) | int16(b[1])<<8, true
 }
+
+const (
+	stateMachineValuesBeginOff = 0x160
+	stateMachineValuesEndOff   = 0x168
+	stateMachineValueStride    = 8
+)
+
+// ReadStateMachineState reads a state value from the entity's StateMachine component by
+// slot index, the same store GGG's GetState getter reads (FUN_141f5ed10): values vector
+// [+0x160,+0x168) stride 8 with a u32 state per slot, selected by GetState via a
+// name->index map @+0x158. Encounter/altar/interactable state lives here (e.g. the ritual
+// altar state at index 0: 0=available, 2=active, 3=done). ok is false outside the vector.
+func ReadStateMachineState(r Reader, entity uint64, index int) (uint32, bool) {
+	sm := ResolveComponentByName(r, entity, "StateMachine")
+	if sm == 0 {
+		return 0, false
+	}
+	begin := ReadU64(r, sm+stateMachineValuesBeginOff)
+	end := ReadU64(r, sm+stateMachineValuesEndOff)
+	if begin < HeapLo || end < begin {
+		return 0, false
+	}
+	n := (end - begin) / stateMachineValueStride
+	if index < 0 || uint64(index) >= n {
+		return 0, false
+	}
+	return ReadU32(r, begin+uint64(index)*stateMachineValueStride), true
+}
