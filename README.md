@@ -22,3 +22,8 @@ import gamestate "github.com/imkk000/poe2-offsets"
 
 - <https://github.com/imkk000/mh> — cross-platform process API
 - <https://github.com/imkk000/go-protonhax> — communicate with Proton (Wine)
+- <https://github.com/imkk000/go-offset-scanner> - simd memory pattern scanner
+
+## License
+
+Free to use however you like — no warranty. It's a casual hobby project.
