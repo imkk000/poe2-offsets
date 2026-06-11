@@ -322,3 +322,60 @@ func ReadArchnemesisHotHTCorruption(r Reader, entity uint64) (int32, bool) {
 func ReadDemonFormSpellBuffStacks(r Reader, entity uint64) (int32, bool) {
 	return ReadPlayerStatKey(r, entity, demonFormSpellBuffStatKey)
 }
+
+const (
+	explosionPositionHash    = 0x062F75FF
+	flashGrenadePositionHash = 0x1470B039
+	masqueradePortalRefHash  = 0x0F95D119
+	sunPortalRefHash         = 0x368F7EB4
+	hashVec3ElementCount     = 3
+)
+
+func ReadEntityHashVec3(r Reader, entity uint64, hash uint32) (x, y, z float32, ok bool) {
+	entry, found := hashEntry(r, entity+entityStatStoreOff, hash)
+	if !found {
+		return 0, 0, 0, false
+	}
+	vbegin := ReadU64(r, entry+hashEntryValueOff)
+	vend := ReadU64(r, entry+hashEntryValueOff+8)
+	if vbegin < HeapLo || vend < vbegin || (vend-vbegin)/refValueStride < hashVec3ElementCount {
+		return 0, 0, 0, false
+	}
+	for i := range hashVec3ElementCount {
+		if byte(ReadU32(r, vbegin+uint64(i)*refValueStride+hashValueTypeOff)) != hashValueFloat {
+			return 0, 0, 0, false
+		}
+	}
+	return ReadFloat32(r, vbegin),
+		ReadFloat32(r, vbegin+refValueStride),
+		ReadFloat32(r, vbegin+2*refValueStride),
+		true
+}
+
+func ReadExplosionPosition(r Reader, entity uint64) (x, y, z float32, ok bool) {
+	return ReadEntityHashVec3(r, entity, explosionPositionHash)
+}
+
+func ReadFlashGrenadeExplosionPosition(r Reader, entity uint64) (x, y, z float32, ok bool) {
+	return ReadEntityHashVec3(r, entity, flashGrenadePositionHash)
+}
+
+func ReadEntityRefPosition(r Reader, entity uint64, key uint32) (x, y float32, ok bool) {
+	ref, found := readEntityRef(r, entity, key)
+	if !found {
+		return 0, 0, false
+	}
+	sub := ReadU64(r, ref+bossPosSubOff)
+	if sub < HeapLo || sub >= HeapHi {
+		return 0, 0, false
+	}
+	return ReadFloat32(r, sub+bossPosXOff), ReadFloat32(r, sub+bossPosXOff+4), true
+}
+
+func ReadMasqueradePortalPosition(r Reader, entity uint64) (x, y float32, ok bool) {
+	return ReadEntityRefPosition(r, entity, masqueradePortalRefHash)
+}
+
+func ReadSunPortalPosition(r Reader, entity uint64) (x, y float32, ok bool) {
+	return ReadEntityRefPosition(r, entity, sunPortalRefHash)
+}
