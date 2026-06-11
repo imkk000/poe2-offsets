@@ -18,6 +18,12 @@ const (
 	currentBossHashKey   = 0x9B677236
 	flameblastChargeHash = 0xE7C628CE
 	bannerStagesHash     = 0xFFB34194
+	killOwnerHash        = 0x4082B5B7
+	minionOwnerHash      = 0x2442801A
+	effectCasterHash     = 0x40F0FC9C
+	curseCasterHash      = 0x14406536
+
+	hashValueRefValid = 0x01
 )
 
 func hashEntry(r Reader, store uint64, key uint32) (uint64, bool) {
@@ -95,6 +101,42 @@ func ReadCurrentBossPosition(r Reader, entity uint64) (x, y float32, ok bool) {
 		return ReadFloat32(r, sub+bossPosXOff), ReadFloat32(r, sub+bossPosXOff+4), true
 	}
 	return 0, 0, false
+}
+
+func readEntityRef(r Reader, entity uint64, key uint32) (uint64, bool) {
+	entry, ok := hashEntry(r, entity+entityStatStoreOff, key)
+	if !ok {
+		return 0, false
+	}
+	vbegin := ReadU64(r, entry+hashEntryValueOff)
+	if vbegin < HeapLo || vbegin >= HeapHi {
+		return 0, false
+	}
+	if byte(ReadU32(r, vbegin+hashValueTypeOff)) != hashValueRefValid {
+		return 0, false
+	}
+	ref := ReadU64(r, vbegin)
+	if ref < HeapLo || ref >= HeapHi {
+		return 0, false
+	}
+	return ref, true
+}
+
+// ReadKillOwner reads the effect-driven KillOwner attribute, set only when an
+// on-kill effect resolves the killer; it is not general kill attribution.
+func ReadKillOwner(r Reader, entity uint64) (uint64, bool) {
+	return readEntityRef(r, entity, killOwnerHash)
+}
+
+func ReadMinionOwner(r Reader, entity uint64) (uint64, bool) {
+	return readEntityRef(r, entity, minionOwnerHash)
+}
+
+func ReadEffectCaster(r Reader, entity uint64) (uint64, bool) {
+	if caster, ok := readEntityRef(r, entity, effectCasterHash); ok {
+		return caster, true
+	}
+	return readEntityRef(r, entity, curseCasterHash)
 }
 
 const (

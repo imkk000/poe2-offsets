@@ -2,8 +2,6 @@ package gamestate
 
 import "strings"
 
-const counterTextOff = 0x3E0
-
 func caesarUTF16(r Reader, addr uint64) string {
 	t := ReadNativeUtf16TextStruct(r, addr)
 	if t.Length == 0 || t.Length > 128 || t.Ptr < HeapLo || t.Ptr >= HeapHi {
@@ -50,7 +48,7 @@ func FindMonstersRemainingElement(r Reader, gsoSlot uint64) uint64 {
 		if ReadU64(r, e+ElementSelfOff) != e {
 			continue
 		}
-		if isCounterText(caesarUTF16(r, e+counterTextOff)) {
+		if isCounterText(caesarUTF16(r, e+ElementTextOff)) {
 			return e
 		}
 		begin := ReadU64(r, e+ElementChildBegOff)
@@ -79,7 +77,7 @@ func ReadMonstersRemaining(r Reader, elem uint64) (MonstersRemaining, bool) {
 	if elem < HeapLo || elem >= HeapHi || ReadU64(r, elem+ElementSelfOff) != elem {
 		return MonstersRemaining{}, false
 	}
-	s := caesarUTF16(r, elem+counterTextOff)
+	s := caesarUTF16(r, elem+ElementTextOff)
 	if !isCounterText(s) {
 		return MonstersRemaining{}, false
 	}
