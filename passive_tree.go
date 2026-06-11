@@ -1,10 +1,10 @@
 package gamestate
 
 const (
-	passiveSDHop1      = 0x38
-	passiveSDHop2      = 0xB50
-	passiveSDHop3      = 0x120
+	passiveSDHop1      = 0x60
+	passiveSDHop2      = 0x2C0
 	passiveAllocVecOff = 0x8A8
+	passiveEntryStride = 8
 	passiveAllocMax    = 1024
 )
 
@@ -41,10 +41,10 @@ func allocatedVector(r Reader, gsoSlot uint64) (begin uint64, count int, ok bool
 	}
 	begin = ReadU64(r, spd+passiveAllocVecOff)
 	end := ReadU64(r, spd+passiveAllocVecOff+8)
-	if begin < HeapLo || begin >= HeapHi || end <= begin || (end-begin)%4 != 0 {
+	if begin < HeapLo || begin >= HeapHi || end <= begin || (end-begin)%passiveEntryStride != 0 {
 		return 0, 0, false
 	}
-	count = int((end - begin) / 4)
+	count = int((end - begin) / passiveEntryStride)
 	if count <= 0 || count > passiveAllocMax {
 		return 0, 0, false
 	}
@@ -61,13 +61,13 @@ func ReadAllocatedPassives(r Reader, gsoSlot uint64) []AllocatedPassive {
 	if !ok {
 		return nil
 	}
-	buf, err := r.ReadBytes(begin, count*4)
-	if err != nil || len(buf) < count*4 {
+	buf, err := r.ReadBytes(begin, count*passiveEntryStride)
+	if err != nil || len(buf) < count*passiveEntryStride {
 		return nil
 	}
 	out := make([]AllocatedPassive, 0, count)
 	for i := range count {
-		gid := int(uint32(buf[i*4]) | uint32(buf[i*4+1])<<8)
+		gid := int(uint32(buf[i*passiveEntryStride]) | uint32(buf[i*passiveEntryStride+1])<<8)
 		node, ok := PassiveNodeByID(gid)
 		if !ok {
 			continue
@@ -105,9 +105,5 @@ func resolveServerPlayerData(r Reader, area uint64) uint64 {
 	if o2 < HeapLo || o2 >= HeapHi {
 		return 0
 	}
-	o3 := ReadU64(r, o2+passiveSDHop3)
-	if o3 < HeapLo || o3 >= HeapHi {
-		return 0
-	}
-	return o3
+	return o2
 }
