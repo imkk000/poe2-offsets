@@ -64,3 +64,13 @@ func FindRitualContainer(r Reader, regions []HeapRegion) (uint64, bool) {
 	}
 	return 0, false
 }
+
+const renderRitualSacrificePctOff = 0x4BC
+
+func ReadRitualSacrificePercent(r Reader, entity uint64) (float32, bool) {
+	rc := ResolveComponentByName(r, entity, "Render")
+	if rc == 0 {
+		return 0, false
+	}
+	return ReadFloat32(r, rc+renderRitualSacrificePctOff), true
+}
