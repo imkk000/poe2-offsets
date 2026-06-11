@@ -261,7 +261,7 @@ func readBackpack(r Reader, container uint64, withMods bool) (Backpack, bool) {
 				// the mod-row path (ModsComponent +0xA0, 5 slots) reads real mod IDs +
 				// slot for every rarity; the stat-store path (0x148/0x3B8) is stale
 				// (0x3B8 dead) on the current build. Mod IDs are searchable and the
-				// right primitive for pricing. Verified live 2026-06-07 (a live probe).
+				// right primitive for pricing. Verified live 2026-06-07.
 				if mc := ResolveComponentByName(r, itemPtr, "Mods"); mc != 0 {
 					for _, e := range ReadItemModEntries(r, mc) {
 						modTexts = append(modTexts, e.ID) // covers implicit+explicit, all rarities
@@ -315,7 +315,7 @@ func (b *Backpack) RenderBinary() []string {
 }
 
 // WalkInventoryMap visits each item node of a container's item map (the std::map at
-// container+0x188). Exported for offset-discovery probes.
+// container+0x188). Exported for offset-discovery tooling.
 func WalkInventoryMap(r Reader, sentinel uint64, visit func(node uint64)) {
 	walkInventoryMap(r, sentinel, visit)
 }

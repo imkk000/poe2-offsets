@@ -34,12 +34,11 @@ const (
 	corruptedBit      = 0x01
 	twiceCorruptedBit = 0x40
 
-	// Mods component (verified live 2026-06-10, cross-checked vs reference layout
-	// ModsComponentOffsets field order). Item-granted skills hang here.
+	// Mods component (verified live 2026-06-10). Item-granted skills hang here.
 	grantedSkillsOff = 0x210 // StdVector<SkillGem entity*>
 	skillGemLevelOff = 0x24  // SkillGem comp: gem level
 
-	// Charges component (flasks/charms; verified live 2026-06-10 vs reference layout).
+	// Charges component (flasks/charms; verified live 2026-06-10).
 	chargesInternalPtrOff = 0x10 // -> ChargesInternal
 	chargesCurrentOff     = 0x18 // current charges
 	chargesPerUseOff      = 0x18 // within ChargesInternal: charge cost per use
@@ -58,7 +57,7 @@ type FlaskCharges struct {
 
 // ReadItemCharges reads a flask/charm's live charges from its Charges component
 // (+0x18 current; +0x10 -> internal -> +0x18 per-use cost). Verified live 2026-06-10
-// (mana flask cur 75 / per-use 10). Cross-checked vs reference layout Charges struct.
+// (mana flask cur 75 / per-use 10).
 // Returns false for items with no Charges component (currency, gear).
 func ReadItemCharges(r Reader, itemEntity uint64) (FlaskCharges, bool) {
 	ch := ResolveComponentByName(r, itemEntity, "Charges")

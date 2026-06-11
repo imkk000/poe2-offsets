@@ -1,9 +1,9 @@
 package gamestate
 
 // Actor combat state. Offsets found 2026-06-10 by observing the local player's Actor
-// during live manual combat (a live probe): Actor+0x900 held a pointer that
-// tracked the current target across every monster the player switched to. Resolve the
-// component by name so it survives vtable drift.
+// during live manual combat: Actor+0x900 held a pointer that tracked the current target
+// across every monster the player switched to. Resolve the component by name so it
+// survives vtable drift.
 
 const actorCurrentTargetOff = 0x900
 

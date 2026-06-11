@@ -52,12 +52,10 @@ func resolveServerData(r Reader, gsoSlot uint64) (uint64, error) {
 }
 
 const (
-	// 2026-06-11 patch: re-anchored to a 2-hop chain SD+0x2B0 -> +0x38, gold@+0x98
-	// (BFS from ServerData to the live gold value; the 2026-06-09 3-hop
-	// +0x38/+0x160/+0x4C8 is dead). Re-find with a live probe after a patch.
-	goldHop1Off   = 0x2B0
-	goldHop2Off   = 0x38
-	playerGoldOff = 0x98
+	goldHop1Off   = 0x60
+	goldHop2Off   = 0x608
+	goldHop3Off   = 0x790
+	playerGoldOff = 0x798
 )
 
 func ReadPlayerGold(r Reader, gsoSlot uint64) (int, bool) {
@@ -73,7 +71,11 @@ func ReadPlayerGold(r Reader, gsoSlot uint64) (int, bool) {
 	if !serverInHeap(p2) {
 		return 0, false
 	}
-	return int(ReadU32(r, p2+playerGoldOff)), true
+	p3 := ReadU64(r, p2+goldHop3Off)
+	if !serverInHeap(p3) {
+		return 0, false
+	}
+	return int(ReadU32(r, p3+playerGoldOff)), true
 }
 
 func readServerIconsAt(r Reader, serverData, off uint64) ([]ServerMinimapIcon, bool) {

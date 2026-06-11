@@ -1,8 +1,7 @@
 package gamestate
 
-// World-entity component readers (structure from reference layout, field names from
-// reference layout, offsets re-verified live 2026-06-10 — reference layout's numeric offsets are an
-// older patch). All resolve their component by name, so they survive vtable drift.
+// World-entity component readers. Offsets verified live 2026-06-10. All resolve their
+// component by name, so they survive vtable drift.
 
 const (
 	// Positioned.Reaction byte: 0 = hostile/enemy, 1 = ally/friendly (player, player
@@ -10,7 +9,7 @@ const (
 	// skeletons read 1, hostile monsters read 0.
 	positionedReactionOff = 0x1E0
 
-	// Targetable flag block shifted +0x18 vs reference layout (same drift as Life).
+	// Targetable flag block (same +0x18 drift as Life).
 	targetableIsTargetableOff = 0x69
 	targetableIsHighlightOff  = 0x6A
 	targetableIsTargetedOff   = 0x6B

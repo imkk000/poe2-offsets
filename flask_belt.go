@@ -8,7 +8,7 @@ import (
 // Flask belt resolution for charge-aware auto-flask. The belt is a small inventory
 // container (<=5 wide, <=2 tall) holding only flask/charm items; each flask sits at
 // grid x = key-slot - 1 (x=0 -> key '1' = Life flask, x=1 -> key '2' = Mana flask).
-// Verified live 2026-06-10 (a live probe).
+// Verified live 2026-06-10.
 
 const (
 	flaskBeltMaxWidth  = 5

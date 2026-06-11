@@ -7,8 +7,8 @@ import (
 
 const (
 	// ObjectMagicProperties holds a ModsAndObjectMagicProperties details block at
-	// +0xB0 (reference layout) — the SAME struct as the item Mods component, so rarity is
-	// at +0xB0+0x94 = +0x144 and the 5-slot mod array at +0xB0+0xA0 = +0x150.
+	// +0xB0 — the SAME struct as the item Mods component, so rarity is at
+	// +0xB0+0x94 = +0x144 and the 5-slot mod array at +0xB0+0xA0 = +0x150.
 	objectMagicPropsDetailsOff = 0xB0
 	monsterRarityOffset        = 0x144
 
