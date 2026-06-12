@@ -19,7 +19,7 @@ const (
 	flameblastChargeHash = 0xE7C628CE
 	bannerStagesHash     = 0xFFB34194
 	killOwnerHash        = 0x4082B5B7
-	minionOwnerHash      = 0x2442801A
+	minionOwnerHash      = 0xE794FCDA
 	effectCasterHash     = 0x40F0FC9C
 	curseCasterHash      = 0x14406536
 
@@ -72,19 +72,19 @@ func ReadBannerStages(r Reader, entity uint64) (float32, bool) {
 	return ReadEntityHashStat(r, entity, bannerStagesHash)
 }
 
-func ReadCurrentBossPosition(r Reader, entity uint64) (x, y float32, ok bool) {
+func ReadCurrentBossEntity(r Reader, entity uint64) (uint64, bool) {
 	comp := ReadU64(r, entity+actorRefTableOff)
 	if comp < HeapLo || comp >= HeapHi {
-		return 0, 0, false
+		return 0, false
 	}
 	entry, found := hashEntry(r, comp, currentBossHashKey)
 	if !found {
-		return 0, 0, false
+		return 0, false
 	}
 	vbegin := ReadU64(r, entry+hashEntryValueOff)
 	vend := ReadU64(r, entry+hashEntryValueOff+8)
 	if vbegin < HeapLo || vend < vbegin {
-		return 0, 0, false
+		return 0, false
 	}
 	for e := vbegin; e+refValueStride <= vend; e += refValueStride {
 		if byte(ReadU32(r, e+refValueValidOff)) != 1 {
@@ -94,13 +94,21 @@ func ReadCurrentBossPosition(r Reader, entity uint64) (x, y float32, ok bool) {
 		if boss < HeapLo || boss >= HeapHi {
 			continue
 		}
-		sub := ReadU64(r, boss+bossPosSubOff)
-		if sub < HeapLo || sub >= HeapHi {
-			continue
-		}
-		return ReadFloat32(r, sub+bossPosXOff), ReadFloat32(r, sub+bossPosXOff+4), true
+		return boss, true
 	}
-	return 0, 0, false
+	return 0, false
+}
+
+func ReadCurrentBossPosition(r Reader, entity uint64) (x, y float32, ok bool) {
+	boss, found := ReadCurrentBossEntity(r, entity)
+	if !found {
+		return 0, 0, false
+	}
+	sub := ReadU64(r, boss+bossPosSubOff)
+	if sub < HeapLo || sub >= HeapHi {
+		return 0, 0, false
+	}
+	return ReadFloat32(r, sub+bossPosXOff), ReadFloat32(r, sub+bossPosXOff+4), true
 }
 
 func readEntityRef(r Reader, entity uint64, key uint32) (uint64, bool) {
@@ -122,14 +130,15 @@ func readEntityRef(r Reader, entity uint64, key uint32) (uint64, bool) {
 	return ref, true
 }
 
-// ReadKillOwner reads the effect-driven KillOwner attribute, set only when an
-// on-kill effect resolves the killer; it is not general kill attribution.
 func ReadKillOwner(r Reader, entity uint64) (uint64, bool) {
 	return readEntityRef(r, entity, killOwnerHash)
 }
 
 func ReadMinionOwner(r Reader, entity uint64) (uint64, bool) {
-	return readEntityRef(r, entity, minionOwnerHash)
+	if owner, ok := readEntityRef(r, entity, minionOwnerHash); ok {
+		return owner, true
+	}
+	return ReadEffectCaster(r, entity)
 }
 
 func ReadEffectCaster(r Reader, entity uint64) (uint64, bool) {
@@ -140,7 +149,7 @@ func ReadEffectCaster(r Reader, entity uint64) (uint64, bool) {
 }
 
 const (
-	vaalSoulsStatKey = 0x4105
+	vaalSoulsStatKey = 0x4106
 	rageStatKey      = 0x2B99
 )
 
@@ -312,7 +321,7 @@ func ReadCoveredInOilEffect(r Reader, entity uint64) (a, b float32, ok bool) {
 
 const (
 	archnemesisHotHTCorruptionStatKey = 0x3ADC
-	demonFormSpellBuffStatKey         = 0x4E7B
+	demonFormSpellBuffStatKey         = 0x4E7C
 )
 
 func ReadArchnemesisHotHTCorruption(r Reader, entity uint64) (int32, bool) {

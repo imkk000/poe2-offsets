@@ -1,15 +1,7 @@
 package gamestate
 
-// Actor combat state. Offsets found 2026-06-10 by observing the local player's Actor
-// during live manual combat: Actor+0x900 held a pointer that tracked the current target
-// across every monster the player switched to. Resolve the component by name so it
-// survives vtable drift.
-
 const actorCurrentTargetOff = 0x900
 
-// ReadActorTarget returns the entity the actor is currently targeting (the monster the
-// player is attacking), or 0 if none. Verified live: tracked retargeting across
-// TerracottaGuardian / FaridunLizard / DruidicFallenStag / DesertPhantasm / HooksMonster.
 func ReadActorTarget(r Reader, entity uint64) uint64 {
 	actor := ResolveComponentByName(r, entity, "Actor")
 	if actor == 0 {
@@ -22,19 +14,15 @@ func ReadActorTarget(r Reader, entity uint64) uint64 {
 	return tgt
 }
 
-// Movement state. Offsets from GGG's GetMovementDestination getter, re-confirmed on the
-// 2026-06-12 patch at FUN_141f9c070 (assert "GetMovementDestination: Calling object is not
-// moving"): the entity's Positioned/Movement sub-object at entity+0x98 holds move speed, a
-// moving flag, the destination grid coords, and the current world position. The getter gates
-// "moving" on speed!=0 AND moveFlag sign-bit clear, then returns (+0x240,+0x244) on the common
-// path; bytes +0x22d/+0x22e select an alternate coord pair (+0x23c) we don't need.
-// curX/curY at +0x490/+0x494 cross-checked live against the Render position (exact match).
 const (
 	entityPositionedOff = 0x98
 	moveSpeedOff        = 0x28C
 	moveFlagOff         = 0x1E5
-	moveDestXOff        = 0x240
-	moveDestYOff        = 0x244
+	movePrimaryOff      = 0x240
+	moveAltYOff         = 0x23C
+	moveSentinelYOff    = 0x244
+	moveAxisFlagOff     = 0x22D
+	moveYSourceFlagOff  = 0x22E
 )
 
 func resolvePositioned(r Reader, entity uint64) uint64 {
@@ -49,25 +37,27 @@ func actorMoving(r Reader, sub uint64) bool {
 	return ReadFloat32(r, sub+moveSpeedOff) != 0 && ReadU32(r, sub+moveFlagOff)&0x80 == 0
 }
 
-// ReadActorMoving reports whether the entity is currently moving, matching the engine's
-// own gate (move speed nonzero and the move flag byte non-negative).
 func ReadActorMoving(r Reader, entity uint64) bool {
 	sub := resolvePositioned(r, entity)
 	return sub != 0 && actorMoving(r, sub)
 }
 
-// ReadMovementDestination returns the entity's destination grid coordinates while moving;
-// ok is false when stationary (the engine leaves a sentinel in the destination otherwise).
 func ReadMovementDestination(r Reader, entity uint64) (x, y int32, ok bool) {
 	sub := resolvePositioned(r, entity)
 	if sub == 0 || !actorMoving(r, sub) {
 		return 0, 0, false
 	}
-	return int32(ReadU32(r, sub+moveDestXOff)), int32(ReadU32(r, sub+moveDestYOff)), true
+	primary := int32(ReadU32(r, sub+movePrimaryOff))
+	ySrc := int32(ReadU32(r, sub+moveAltYOff))
+	if ReadByte(r, sub+moveYSourceFlagOff) != 0 {
+		ySrc = int32(ReadU32(r, sub+moveSentinelYOff))
+	}
+	if ReadByte(r, sub+moveAxisFlagOff) != 0 {
+		return primary, ySrc, true
+	}
+	return ySrc, primary, true
 }
 
-// ReadCurrentMoveSpeed returns the entity's current movement speed (0 when stationary),
-// the same field the engine's GetCurrentMoveSpeed reads.
 func ReadCurrentMoveSpeed(r Reader, entity uint64) float32 {
 	sub := resolvePositioned(r, entity)
 	if sub == 0 {
@@ -76,10 +66,66 @@ func ReadCurrentMoveSpeed(r Reader, entity uint64) float32 {
 	return ReadFloat32(r, sub+moveSpeedOff)
 }
 
-// Stance index, from GGG's GetStance getter (FUN_141f70650 -> FUN_141d867f0 on the Actor
-// component): Actor+0x2BE is the current stance byte index into a per-skill-graph stance
-// table (records stride 0x58, name std::wstring @ rec+0x30/+0x40). The index alone is the
-// cheap state signal; resolving the name needs the graph-vector walk (Actor+0x210).
+const (
+	actorActionFlagsOff    = 0x2A0
+	actionFlagDead         = 0x40
+	actionFlagUsingAbility = 0x02
+)
+
+func ReadActionFlags(r Reader, entity uint64) (byte, bool) {
+	actor := ResolveComponentByName(r, entity, "Actor")
+	if actor == 0 {
+		return 0, false
+	}
+	return ReadByte(r, actor+actorActionFlagsOff), true
+}
+
+func IsUsingAbility(r Reader, entity uint64) bool {
+	f, ok := ReadActionFlags(r, entity)
+	return ok && f&actionFlagUsingAbility != 0
+}
+
+func IsActorDead(r Reader, entity uint64) bool {
+	f, ok := ReadActionFlags(r, entity)
+	return ok && f&actionFlagDead != 0
+}
+
+const (
+	animatedObjectOff = 0x350
+	animationIDOff    = 0x190
+	animationStartOff = 0x1B8
+	animationEndOff   = 0x1BC
+)
+
+func resolveAnimationController(r Reader, entity uint64) uint64 {
+	animComp := ResolveComponentByName(r, entity, "Animated")
+	if animComp == 0 {
+		return 0
+	}
+	animObj := ReadU64(r, animComp+animatedObjectOff)
+	if animObj < HeapLo || animObj >= HeapHi {
+		return 0
+	}
+	return ResolveComponentByName(r, animObj, "AnimationController")
+}
+
+func ReadAnimationID(r Reader, entity uint64) (int32, bool) {
+	ac := resolveAnimationController(r, entity)
+	if ac == 0 {
+		return 0, false
+	}
+	id := int32(ReadU32(r, ac+animationIDOff))
+	return id, id != -1
+}
+
+func ReadAnimationLength(r Reader, entity uint64) (float32, bool) {
+	ac := resolveAnimationController(r, entity)
+	if ac == 0 || int32(ReadU32(r, ac+animationIDOff)) == -1 {
+		return 0, false
+	}
+	return ReadFloat32(r, ac+animationEndOff) - ReadFloat32(r, ac+animationStartOff), true
+}
+
 const actorStanceIndexOff = 0x2BE
 
 func ReadActorStanceIndex(r Reader, entity uint64) (byte, bool) {
