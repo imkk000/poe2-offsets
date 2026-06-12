@@ -21,7 +21,7 @@ type Character struct {
 	LevelMax int    `json:"level_max,omitempty"`
 }
 
-var expForLevel = [...]uint64{
+var ExpForLevel = [...]uint64{
 	0,
 	0, 525, 1760, 3781, 7184, 12186, 19324, 29377, 43181, 61693,
 	85990, 117506, 157384, 207736, 269997, 346462, 439268, 551295, 685171, 843709,
@@ -46,11 +46,11 @@ func ReadCharacter(r Reader, entity uint64) Character {
 	c.CurEXP = uint32(readU32(r, comp+charCurEXPOff))
 	c.Level = int(ReadByte(r, comp+charLevelOff))
 	c.LevelMax = 100
-	if c.Level > 0 && c.Level < len(expForLevel) {
-		c.LevelEXP = uint32(expForLevel[c.Level])
+	if c.Level > 0 && c.Level < len(ExpForLevel) {
+		c.LevelEXP = uint32(ExpForLevel[c.Level])
 	}
-	if c.Level > 0 && c.Level < len(expForLevel)-1 {
-		c.NextEXP = uint32(expForLevel[c.Level+1])
+	if c.Level > 0 && c.Level < len(ExpForLevel)-1 {
+		c.NextEXP = uint32(ExpForLevel[c.Level+1])
 	}
 	return c
 }
