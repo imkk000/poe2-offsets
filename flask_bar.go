@@ -1,6 +1,6 @@
 package gamestate
 
-const FlaskBarVtable uint64 = 0x142E5B4F0
+const FlaskBarVtable uint64 = 0x142EFA838 // ctor FUN_1403d7dd0, drifted 2026-06-12 (was 0x142E5B4F0)
 
 const (
 	flaskBarMaxWalk   = 60000
