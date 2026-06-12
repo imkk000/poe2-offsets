@@ -24,8 +24,8 @@ type InventoryItem struct {
 	RarityComp     string         `json:"rarity_comp"`
 	Path           string         `json:"path"`
 	BaseName       string         `json:"base_name,omitempty"`
-	FullName       string         `json:"full_name,omitempty"`  // Magic: "<prefix> <base> <of suffix>"
-	VisualArt      string         `json:"visual_art,omitempty"` // IVI 2D art .dds; unique-specific identity
+	FullName       string         `json:"full_name,omitempty"`
+	VisualArt      string         `json:"visual_art,omitempty"`
 	Category       string         `json:"category,omitempty"`
 	ItemClass      string         `json:"item_class,omitempty"`
 	Rarity         string         `json:"rarity,omitempty"`
@@ -38,10 +38,10 @@ type InventoryItem struct {
 	ModCount       int            `json:"mods,omitempty"`
 	Stack          int            `json:"stack,omitempty"`
 	Quality        int            `json:"quality,omitempty"`
-	Sockets        int            `json:"sockets,omitempty"`        // actual/filled socket count (gems: support-gem count)
-	SocketsMax     int            `json:"sockets_max,omitempty"`    // capacity (gear rune-socket max); 1 on skill gems
-	SocketedItems  []string       `json:"socketed,omitempty"`       // socketed rune/soulcore leaf names (gear); empty for inventory gems
-	GrantedSkills  []GrantedSkill `json:"granted_skills,omitempty"` // item-granted skills (Mods comp +0x210); e.g. a wand granting Mana Drain
+	Sockets        int            `json:"sockets,omitempty"`
+	SocketsMax     int            `json:"sockets_max,omitempty"`
+	SocketedItems  []string       `json:"socketed,omitempty"`
+	GrantedSkills  []GrantedSkill `json:"granted_skills,omitempty"`
 	Armour         int            `json:"armour,omitempty"`
 	Evasion        int            `json:"evasion,omitempty"`
 	EnerShield     int            `json:"es,omitempty"`
@@ -60,8 +60,8 @@ type InventoryItem struct {
 
 type ItemModEntry struct {
 	ID     string  `json:"id"`
-	Value  int32   `json:"value"`            // first roll (Values[0]); kept for back-compat
-	Values []int32 `json:"values,omitempty"` // full roll list — hybrid/map mods carry 2+
+	Value  int32   `json:"value"`
+	Values []int32 `json:"values,omitempty"`
 	Slot   string  `json:"slot"`
 }
 
@@ -76,10 +76,7 @@ func ReadItemModTexts(r Reader, rarityComp uint64, rarity string) []string {
 }
 
 func ReadItemMods(r Reader, rarityComp uint64, rarity string) ([]string, []ModStat) {
-	// +0x148 is the explicit/intrinsic stat-store vector for all rarities (verified
-	// live 2026-06-07: Magic/Rare/Unique mods all resolve from it). The old +0x3B8
-	// "explicit" offset is dead on the current build — Rare items read 0 mods through
-	// it. See docs/re/entity.md.
+
 	var offs []uint64
 	switch rarity {
 	case "Magic", "Rare", "Unique":
@@ -229,18 +226,12 @@ func stripRichText(s string) string {
 }
 
 func ReadItemDetailsByOwner(r Reader, owner uint64, it *InventoryItem) {
-	// Quality and Sockets are separate, name-resolvable components now (the old
-	// combined QualityCompVtable drifted). Both expose the count at +0x18. Verified
-	// live 2026-06-07: 20% quality armour, 3-socket armour.
+
 	if q := ResolveComponentByName(r, owner, "Quality"); q != 0 {
 		it.Quality = readU32(r, q+0x18)
 	}
 	if s := ResolveComponentByName(r, owner, "Sockets"); s != 0 {
-		// +0x18 is the CAPACITY (gear: max rune sockets; reads 1 on skill gems).
-		// The actual socket count is the byte-vector at +0x60{begin,end}: one byte
-		// per socket. For a skill gem that's its support-gem socket count, for gear
-		// the FILLED rune count. Verified live 2026-06-09 (Cast on Elemental Ailment
-		// 5, Time of Need 4, Comet 2). Falls back to +0x18 if the vector is invalid.
+
 		it.SocketsMax = int(readU32(r, s+0x18))
 		begin := ReadU64(r, s+0x60)
 		end := ReadU64(r, s+0x68)
@@ -249,10 +240,7 @@ func ReadItemDetailsByOwner(r Reader, owner uint64, it *InventoryItem) {
 		} else {
 			it.Sockets = it.SocketsMax
 		}
-		// Socketed runes/soul cores: contiguous entity-pointer array at +0x30, one
-		// per socket. Verified across gear 2026-06-09 (+0x30/+0x38/... = the runes;
-		// owner is at +0x8, NOT in this array). Empty for inventory skill gems
-		// (supports only exist on an assigned skill).
+
 		for i := 0; i < it.Sockets && i < 8; i++ {
 			p := ReadU64(r, s+0x30+uint64(i)*8)
 			if p < HeapLo || p >= HeapHi {
@@ -373,9 +361,6 @@ func ReadItemFromRarityComp(r Reader, rarityComp uint64) (InventoryItem, bool) {
 	return it, true
 }
 
-// BuildItemDisplayName constructs a Magic item's full name "<prefix> <base> <of
-// suffix>" from its affix words (data/mods.json Name column). Rare/Unique use a
-// generated name not derivable from affixes — returns the base for those.
 func BuildItemDisplayName(rarity, baseName string, mods []ItemModEntry) string {
 	if rarity != "Magic" || baseName == "" {
 		return baseName
@@ -409,8 +394,6 @@ func BuildItemDisplayName(rarity, baseName string, mods []ItemModEntry) string {
 
 var modSlotNames = [5]string{"implicit", "explicit", "enchant", "hellscape", "crucible"}
 
-// readModValues reads the roll vector embedded at a mod record (record+0x00 begin,
-// +0x08 end; one i32 per roll). Returns nil if the vector is empty/invalid.
 func readModValues(r Reader, elems []byte, base int) []int32 {
 	begin := binary.LittleEndian.Uint64(elems[base : base+8])
 	end := binary.LittleEndian.Uint64(elems[base+8 : base+16])
@@ -457,9 +440,7 @@ func ReadItemModEntries(r Reader, rarityComp uint64) []ItemModEntry {
 		}
 		for i := range n {
 			base := i * modArrayStride
-			// The authoritative roll list is the Values std::vector at the record
-			// start (+0x00 begin, +0x08 end), one i32 per roll. Hybrid/map mods carry
-			// 2+ values; +0x18 (Value0) holds garbage for those, so prefer the vector.
+
 			values := readModValues(r, elems, base)
 			value := int32(binary.LittleEndian.Uint32(elems[base+modArrayValue0Off : base+modArrayValue0Off+4]))
 			if len(values) > 0 {
@@ -478,7 +459,7 @@ func ReadItemModEntries(r Reader, rarityComp uint64) []ItemModEntry {
 				continue
 			}
 			slotLabel := modSlotNames[slot]
-			if slot == 1 { // explicit: split into prefix/suffix via the mod row's GenerationType
+			if slot == 1 {
 				switch ReadByte(r, rowPtr+modGenerationTypeOff) {
 				case 1:
 					slotLabel = "prefix"

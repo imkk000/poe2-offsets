@@ -28,7 +28,7 @@ const (
 	keyLightResUC  = 2034
 	keyChaosResUC  = 2035
 
-	keySpirit             = 16094
+	keySpirit             = 16095
 	keySpiritReservation  = 16114
 	keySpiritReservation2 = 16112
 
@@ -36,7 +36,7 @@ const (
 	keyItemQuantity     = 805
 	keyCooldownRecovery = 3225
 
-	keyKillCount = 15256
+	keyKillCount = 15257
 
 	statsMaxVecBytes = 0x4000
 )
@@ -226,23 +226,20 @@ func DumpStatsVec(r Reader, statsComp uint64) []StatEntry {
 	return dumpVecAt(r, statsComp, statsItemsPtrOff)
 }
 
-// Support-gem capacity per attribute colour (RE'd 2026-06-09). USED is stored as
-// stats; MAX is floor(attribute / 5) computed from the virtual_*_for_gem_requirements
-// attributes. Verified live: str 75 -> 15, dex 22 -> 4, int 243 -> 48.
 const (
-	keyUsedRedSupports    = 22264 // total_socketed_red_skill_support_gems (str)
-	keyUsedGreenSupports  = 22265 // total_socketed_green_skill_support_gems (dex)
-	keyUsedBlueSupports   = 22266 // total_socketed_blue_skill_support_gems (int)
-	keyVirtStrForGemReqs  = 19774 // virtual_strength_for_gem_requirements
-	keyVirtDexForGemReqs  = 19775 // virtual_dexterity_for_gem_requirements
-	keyVirtIntForGemReqs  = 19776 // virtual_intelligence_for_gem_requirements
+	keyUsedRedSupports    = 22265
+	keyUsedGreenSupports  = 22266
+	keyUsedBlueSupports   = 22267
+	keyVirtStrForGemReqs  = 19775
+	keyVirtDexForGemReqs  = 19776
+	keyVirtIntForGemReqs  = 19777
 	supportGemAttrDivisor = 5
 )
 
 type SupportCapacity struct {
-	RedUsed, RedMax     int // strength
-	GreenUsed, GreenMax int // dexterity
-	BlueUsed, BlueMax   int // intelligence
+	RedUsed, RedMax     int
+	GreenUsed, GreenMax int
+	BlueUsed, BlueMax   int
 }
 
 func ReadSupportCapacity(r Reader, statsComp uint64) (SupportCapacity, bool) {

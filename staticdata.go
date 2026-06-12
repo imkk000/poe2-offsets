@@ -68,10 +68,9 @@ type StatDescFormat struct {
 	Text   string   `json:"text"`
 }
 
-// ModInfo is a data/mods.json entry: the affix display word + generation type.
 type ModInfo struct {
-	Name           string `json:"name"`            // affix word, e.g. "Combat" / "of Enduring"
-	GenerationType string `json:"generation_type"` // prefix / suffix / unique / ...
+	Name           string `json:"name"`
+	GenerationType string `json:"generation_type"`
 	RequiredLevel  int    `json:"required_level"`
 }
 
@@ -86,7 +85,6 @@ var (
 	passiveNodesLoaded atomic.Pointer[map[int]PassiveNode]
 )
 
-// ModInfoByID returns the data/mods.json entry for a mod id (ok=false if absent).
 func ModInfoByID(id string) (ModInfo, bool) {
 	m := modsInfoLoaded.Load()
 	if m == nil {

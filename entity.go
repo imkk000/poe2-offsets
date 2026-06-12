@@ -47,6 +47,8 @@ func ClassifyEntity(path string) string {
 		return "AzmeriSpirit"
 	case strings.HasPrefix(path, "Metadata/Monsters/TormentedSpirits/"):
 		return "TormentedSpirit"
+	case strings.Contains(path, "PlayerSummoned"):
+		return "Minion"
 	case strings.HasPrefix(path, "Metadata/Monsters/"):
 		return "Monster"
 	case strings.HasPrefix(path, "Metadata/MiscellaneousObjects/WorldItem"):

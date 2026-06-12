@@ -44,10 +44,7 @@ func (sr *SkillBarReader) Read(r Reader, gsoSlot, actor uint64) []SkillSlot {
 		if !ok {
 			continue
 		}
-		// Skip skill icons inside a hidden panel (the skill-selection popup shown
-		// when clicking an empty slot lives in the tree but is collapsed); its
-		// icons are self-visible but have a hidden ancestor, so they'd otherwise
-		// draw a duplicate cooldown number above the real hotbar.
+
 		if !ElementVisibleHierarchical(r, e) {
 			continue
 		}

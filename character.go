@@ -55,6 +55,15 @@ func ReadCharacter(r Reader, entity uint64) Character {
 	return c
 }
 
+func ReadPlayerClass(r Reader, entity uint64) (classIndex, ascendancy int, ok bool) {
+	comp := ResolveComponentByName(r, entity, "PlayerClass")
+	if comp == 0 {
+		return 0, 0, false
+	}
+	b := ReadByte(r, comp+0x158)
+	return int(b & 0x1F), int(b >> 5), true
+}
+
 func readUTF16String(r Reader, addr uint64, maxChars int) string {
 	buf, err := r.ReadBytes(addr, maxChars*2)
 	if err != nil || len(buf) < 2 {

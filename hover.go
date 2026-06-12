@@ -8,21 +8,17 @@ import (
 	"sync/atomic"
 )
 
-const HoverTrackerVtable uint64 = 0x142D71818 // 0x142D657D8 -> 0x142D707D8 (+0xB000 2026-06-07) -> +0x1040 2026-06-09
+const HoverTrackerVtable uint64 = 0x142D71818
 
 const (
 	hoverTrackerViewOff    = 0x50
 	hoverViewItemEntityOff = 0x4F8
 	hoverTrackerEntityOff  = 0x18
 
-	// Static chain to the WORLD hover tracker (no heap scan): UiRoot+0x7D8 -> host,
-	// host+0x630 -> tracker. Found via reverse pointer-scan 2026-06-07.
 	uiRootHoverHostOff   = 0x7D8
 	worldHoverTrackerOff = 0x630
 )
 
-// ResolveWorldHoverTracker returns the world hover tracker via the UiRoot pointer
-// chain (no scan), or 0. tracker+0x18 holds the awake entity under the cursor.
 func ResolveWorldHoverTracker(r Reader, gsoSlot uint64) uint64 {
 	ui, err := ResolveUiRoot(r, gsoSlot)
 	if err != nil || ui == 0 {
@@ -132,10 +128,6 @@ func ReadHoveredWorldEntity(r Reader, tracker uint64) uint64 {
 	return ent
 }
 
-// scanQwordHits returns every 8-aligned address whose qword == needle, across all
-// regions. The heap is multi-GB so this is parallelized over a worker pool; chunks are
-// 1MB (8-aligned) so an aligned qword never straddles a boundary. Hit order is
-// unspecified (callers don't depend on it).
 func scanQwordHits(r Reader, regions []HeapRegion, needle uint64) []uint64 {
 	pat := make([]byte, 8)
 	binary.LittleEndian.PutUint64(pat, needle)

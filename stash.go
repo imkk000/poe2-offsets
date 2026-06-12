@@ -3,30 +3,27 @@ package gamestate
 const (
 	itemViewContainerBacklinkOff = 0x758
 	itemViewItemIDOff            = 0x760
-	itemViewDimOff               = 0x63F // game stash-search sets this to 1 on non-matching items
+	itemViewDimOff               = 0x63F
 
-	// StashTabContainer (RE 2026-06-07 via Ghidra OpenStashTab FUN_140ac6990 +
-	// tab-select setter FUN_1426ef0c0). It is an Element ancestor of the open tab's
-	// item-views, so we resolve it by walking the Element.Parent chain upward.
-	stcStashesBeginOff = 0x358 // std::vector<StashTabContainerInventory> begin
-	stcStashesEndOff   = 0x360 // end
-	stcVisibleIdxOff   = 0x370 // int32: the open tab within this container
-	stcEntryStride     = 0x90  // StashTabContainerInventory size
-	stcEntryNameOff    = 0x00  // std::wstring tab name
-	stcEntryInvOff     = 0x80  // content-panel Element (ancestor of that tab's item-views)
-	stcEntryButtonOff  = 0x88  // tab-header button Element
+	stcStashesBeginOff = 0x358
+	stcStashesEndOff   = 0x360
+	stcVisibleIdxOff   = 0x370
+	stcEntryStride     = 0x90
+	stcEntryNameOff    = 0x00
+	stcEntryInvOff     = 0x80
+	stcEntryButtonOff  = 0x88
 
-	stashParentWalkDepth = 24 // item-view -> ... -> StashTabContainer (gem/flask nest deep)
+	stashParentWalkDepth = 24
 )
 
 type StashItem struct {
 	ID                                 uint32
 	GridX, GridY, GW, GH               int
 	Name, Path, Rarity                 string
-	ModTexts                           []string // resolved mod display strings (backpack only)
+	ModTexts                           []string
 	ScreenX, ScreenY, ScreenW, ScreenH float32
-	Dimmed                             bool // game search dimmed it (non-match)
-	Matched                            bool // game search is active and this item matched
+	Dimmed                             bool
+	Matched                            bool
 }
 
 type stashView struct {
@@ -34,8 +31,6 @@ type stashView struct {
 	dim  bool
 }
 
-// validateStashTabContainer reports the Stashes-vector begin + VisibleStashIndex if
-// stc has the StashTabContainer shape. Structural (no vtable) so it survives patches.
 func validateStashTabContainer(r Reader, stc uint64) (begin uint64, visibleIdx int, ok bool) {
 	if stc < HeapLo || stc >= HeapHi {
 		return 0, 0, false
@@ -60,8 +55,6 @@ func validateStashTabContainer(r Reader, stc uint64) (begin uint64, visibleIdx i
 	return begin, vi, true
 }
 
-// walkUp invokes fn on each Element.Parent ancestor of start (up to the stash depth)
-// until fn returns true or the chain leaves the heap.
 func walkUp(r Reader, start uint64, fn func(anc uint64) bool) {
 	anc := start
 	for range stashParentWalkDepth {
@@ -75,34 +68,19 @@ func walkUp(r Reader, start uint64, fn func(anc uint64) bool) {
 	}
 }
 
-// ReadStashTabName reads the tab name (std::wstring) of Stashes[idx] of stc.
 func ReadStashTabName(r Reader, stcBegin uint64, idx int) string {
 	return ReadStdWString(r, stcBegin+uint64(idx)*stcEntryStride+stcEntryNameOff)
 }
 
-// FindStashContainer returns the rendered (open) stash tab's item container plus
-// each item id's on-screen rect and the game's search dim flag.
-//
-// Deterministic: every InventoryItemView is grouped by its backing container; the
-// item-view's Element.Parent chain is walked up to the nearest StashTabContainer
-// (Stashes vec @ +0x358, VisibleStashIndex @ +0x370). The OPEN container is the one
-// whose views descend from Stashes[VisibleStashIndex] (its content panel @ +0x80) of
-// that container — which works for every tab type (normal, quad, currency, gem,
-// flask, waystone sub-grids) with no grid-size assumption. Falls back to the old
-// most-on-screen heuristic if the chain can't be resolved.
 type itemViewTab struct {
 	ids        map[uint32]stashView
-	views      []uint64 // item-view addresses (cached for cheap re-read, no full rescan)
+	views      []uint64
 	onScr      int
-	sample     uint64 // a representative item-view
+	sample     uint64
 	stc, begin uint64
 	visibleIdx int
 }
 
-// scanItemViews does ONE InventoryItemView pass over the heap, grouping views by
-// their backing container (id -> rect+dim, on-screen count, resolved StashTabContainer).
-// Both the stash picker and the inventory-rect collector consume this, so the radar
-// can poll a single heap scan per cycle.
 func scanItemViews(r Reader, regions []HeapRegion) map[uint64]*itemViewTab {
 	tabs := make(map[uint64]*itemViewTab)
 	for _, v := range scanQwordHits(r, regions, InventoryItemViewVtable) {
@@ -135,9 +113,6 @@ func scanItemViews(r Reader, regions []HeapRegion) map[uint64]*itemViewTab {
 	return tabs
 }
 
-// pickOpenStash selects the rendered (open) tab from a scanned tab set: the container
-// whose views reach its own Stashes[VisibleStashIndex] content panel (tie-break most
-// on-screen, for sub-tabs); falls back to the real-grid most-on-screen heuristic.
 func pickOpenStash(r Reader, tabs map[uint64]*itemViewTab) (container uint64, byID map[uint32]stashView, panel uint64, ok bool) {
 	bestScr := -1
 	for c, t := range tabs {
@@ -148,9 +123,7 @@ func pickOpenStash(r Reader, tabs map[uint64]*itemViewTab) (container uint64, by
 		if openPanel < HeapLo || openPanel >= HeapHi {
 			continue
 		}
-		// The stash UI keeps its item-view + panel elements allocated when closed
-		// (just hidden), so existence/on-screen-rect alone reports a false "open".
-		// Require the panel to be hierarchically visible.
+
 		if !ElementVisibleHierarchical(r, openPanel) {
 			continue
 		}
@@ -170,7 +143,6 @@ func pickOpenStash(r Reader, tabs map[uint64]*itemViewTab) (container uint64, by
 		return container, byID, panel, true
 	}
 
-	// fallback: pre-RE heuristic — real grid + most on-screen views (no panel rect).
 	bestScr = -1
 	for c, t := range tabs {
 		if !realStashGrid(int(ReadU32(r, c+backpackGridWidthOff)), int(ReadU32(r, c+backpackGridHeightOff))) {
@@ -190,7 +162,6 @@ func FindStashContainer(r Reader, regions []HeapRegion, preferred uint64) (uint6
 	return pickOpenStash(r, scanItemViews(r, regions))
 }
 
-// resolveStc walks an item-view's parent chain to the nearest StashTabContainer.
 func resolveStc(r Reader, view uint64) (stc, begin uint64, visibleIdx int, ok bool) {
 	walkUp(r, view, func(anc uint64) bool {
 		if b, vi, good := validateStashTabContainer(r, anc); good {
@@ -202,14 +173,8 @@ func resolveStc(r Reader, view uint64) (stc, begin uint64, visibleIdx int, ok bo
 	return stc, begin, visibleIdx, ok
 }
 
-// realStashGrid reports a normal (12x12) or quad (24x24) grid — used only by the
-// fallback path; the deterministic chain needs no grid-size assumption.
 func realStashGrid(w, h int) bool { return (w == 12 && h == 12) || (w == 24 && h == 24) }
 
-// buildStashItems turns a picked open tab (container + per-id rects/dim + content
-// panel) into StashItems, enriching with grid/name details from ReadBackpack when the
-// container is a readable grid (special tabs whose grid>32 fail it still yield items
-// with rect+dim). Returns the grid dims and the fixed content-panel rect (design space).
 func buildStashItems(r Reader, container uint64, byID map[uint32]stashView) ([]StashItem, int, int) {
 	searchActive := false
 	for _, sv := range byID {
@@ -250,9 +215,6 @@ func ReadVisibleStash(r Reader, regions []HeapRegion, preferred uint64) ([]Stash
 	return s.Items, s.Container, s.GridW, s.GridH, s.PanelRect, true
 }
 
-// StashScan is a cacheable read of the open stash tab + the backpack item rects. The
-// STC/STCBegin/VisibleIdx/OpenViews/InvViews fields let the radar re-read everything
-// cheaply (RereadStash) instead of re-scanning the whole 8GB heap each poll.
 type StashScan struct {
 	Open         bool
 	Container    uint64
@@ -269,8 +231,6 @@ type StashScan struct {
 	InvRects     map[uint32][4]float32
 }
 
-// ScanStash does the full (expensive) InventoryItemView heap pass and returns a
-// cacheable snapshot of the open stash tab + the backpack rects.
 func ScanStash(r Reader, regions []HeapRegion, backpackContainer uint64) StashScan {
 	tabs := scanItemViews(r, regions)
 
@@ -302,23 +262,19 @@ func ScanStash(r Reader, regions []HeapRegion, backpackContainer uint64) StashSc
 	return s
 }
 
-// RereadStash cheaply refreshes a prior ScanStash WITHOUT a heap scan: it reads the
-// cached StashTabContainer's VisibleStashIndex + content-panel rect and re-reads the
-// cached item-view addresses directly. Returns ok=false when the cache is stale (stash
-// closed, or the open tab changed) so the caller falls back to a full ScanStash.
 func RereadStash(r Reader, prev StashScan) (StashScan, bool) {
 	if prev.STC == 0 || prev.Container == 0 {
 		return StashScan{}, false
 	}
-	// VisibleStashIndex + Stashes vector still valid? (stash closed -> garbage)
+
 	begin, vidx, ok := validateStashTabContainer(r, prev.STC)
 	if !ok || begin != prev.STCBegin || vidx != prev.VisibleIdx {
-		return StashScan{}, false // closed or tab switched -> full rescan
+		return StashScan{}, false
 	}
 	s := prev
 	panel := ReadU64(r, begin+uint64(vidx)*stcEntryStride+stcEntryInvOff)
 	if panel < HeapLo || panel >= HeapHi || !ElementVisibleHierarchical(r, panel) {
-		return StashScan{}, false // UI closed: elements persist but are hidden
+		return StashScan{}, false
 	}
 	s.PanelRect = elementRect(r, panel)
 
@@ -339,12 +295,9 @@ func RereadStash(r Reader, prev StashScan) (StashScan, bool) {
 	return s, true
 }
 
-// rereadViews re-reads cached item-view addresses (rect + dim) for a known container,
-// skipping any that are no longer valid views of it. ok=false if none remain valid
-// (container gone / addresses reused) so the caller forces a full rescan.
 func rereadViews(r Reader, container uint64, views []uint64) (map[uint32]stashView, bool) {
 	if container == 0 {
-		return nil, true // no inventory cached; not an error
+		return nil, true
 	}
 	out := make(map[uint32]stashView, len(views))
 	valid := 0

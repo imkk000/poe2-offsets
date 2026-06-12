@@ -23,7 +23,33 @@ const (
 	atlasMgrVecOff      = 0x48
 	atlasLeagueCompOff  = 0x188
 	atlasCompletionSet  = 0x260
+
+	atlasScreenMgrOff   = 0x6d0
+	atlasScreenCtlOff   = 0x788
+	atlasCtlManagerOff  = 0x90
+	atlasCtlFlagsOff    = 0x180
+	atlasCtlVisBit      = 0x0B
 )
+
+func AtlasScreenOpen(r Reader, gsoSlot uint64) bool {
+	igs, err := ResolveInGameState(r, gsoSlot)
+	if err != nil || igs == 0 {
+		return false
+	}
+	ingameUI := ReadU64(r, igs+InGameStateUiRootOff)
+	if ingameUI < HeapLo || ingameUI >= HeapHi {
+		return false
+	}
+	manager := ReadU64(r, ingameUI+atlasScreenMgrOff)
+	if manager < HeapLo || manager >= HeapHi {
+		return false
+	}
+	ctl := ReadU64(r, ingameUI+atlasScreenCtlOff)
+	if ctl < HeapLo || ctl >= HeapHi || ReadU64(r, ctl+atlasCtlManagerOff) != manager {
+		return false
+	}
+	return ReadU32(r, ctl+atlasCtlFlagsOff)&(1<<atlasCtlVisBit) != 0
+}
 
 type AtlasNode struct {
 	ID          string

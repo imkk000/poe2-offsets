@@ -40,9 +40,6 @@ func ReadNativeUtf16Text(r Reader, addr uint64) string {
 	return b.String()
 }
 
-// ReadStdWString reads a MSVC std::u16string/wstring (the layout PoE2 uses for
-// stash tab names): 16-byte union @ +0x00 (inline UTF-16 when capacity < 8, else a
-// char16* heap pointer), length @ +0x10, capacity @ +0x18.
 func ReadStdWString(r Reader, addr uint64) string {
 	hdr, err := r.ReadBytes(addr, 0x20)
 	if err != nil || len(hdr) < 0x20 {
@@ -55,7 +52,7 @@ func ReadStdWString(r Reader, addr uint64) string {
 	}
 	var data []byte
 	if cap_ < 8 {
-		if n > 7 { // SSO holds at most 7 wchars; larger len with inline cap = garbage
+		if n > 7 {
 			return ""
 		}
 		data = hdr[:n*2]

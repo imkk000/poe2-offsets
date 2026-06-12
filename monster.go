@@ -6,9 +6,6 @@ import (
 )
 
 const (
-	// ObjectMagicProperties holds a ModsAndObjectMagicProperties details block at
-	// +0xB0 — the SAME struct as the item Mods component, so rarity is at
-	// +0xB0+0x94 = +0x144 and the 5-slot mod array at +0xB0+0xA0 = +0x150.
 	objectMagicPropsDetailsOff = 0xB0
 	monsterRarityOffset        = 0x144
 
@@ -80,11 +77,6 @@ func ReadMonsterRarity(r Reader, entity uint64) string {
 	return ""
 }
 
-// ReadMonsterMods reads a monster's affixes/properties from its
-// ObjectMagicProperties component. The details block at +0xB0 mirrors the item
-// Mods component, so the item mod-entry reader decodes it directly: each entry is
-// a mod ID (e.g. MonsterFireResistance, MonsterFast) + rolled value(s). Verified
-// live 2026-06-10 (minion mods: SkeletonWarriorPlayerMinionBlockChance=[30,0]).
 func ReadMonsterMods(r Reader, entity uint64) []ItemModEntry {
 	comp := ResolveComponentByName(r, entity, "ObjectMagicProperties")
 	if comp == 0 {
@@ -157,4 +149,31 @@ func IsAllyMonsterPath(path string) bool {
 		return true
 	}
 	return false
+}
+
+func ReadMonsterEffectiveness(r Reader, entity uint64) (int, bool) {
+	comp := ResolveComponentByName(r, entity, "Monster")
+	if comp == 0 {
+		return 0, false
+	}
+	row := ReadU64(r, ReadU64(r, comp+0x18)+0x10)
+	if row < HeapLo || row >= HeapHi {
+		return 0, false
+	}
+	return int(ReadU32(r, row+0xA8)), true
+}
+
+func IsUsableCorpse(r Reader, entity uint64) bool {
+	comp := ResolveComponentByName(r, entity, "Life")
+	if comp == 0 {
+		return false
+	}
+	if ReadByte(r, comp+0x3E2) == 0 || ReadU32(r, comp+0x1E0) > 0 {
+		return false
+	}
+	sub := ReadU64(r, comp+0x190)
+	if sub < HeapLo || sub >= HeapHi {
+		return false
+	}
+	return ReadByte(r, sub+0xE6) == 0
 }

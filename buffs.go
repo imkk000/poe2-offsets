@@ -1,28 +1,57 @@
 package gamestate
 
-import "encoding/binary"
+import (
+	"encoding/binary"
+	"math"
+)
 
 const (
-	buffsVecBeginOff       = 0x160
-	statusEffectBuffDefOff = 0x08
-	buffDefNamePtrOff      = 0x00
-	buffDefSpiritFlatOff   = 0xC4
-	buffDefSpiritPctOff    = 0x1F4
-	buffDefNameMaxBytes    = 128
+	buffsVecBeginOff         = 0x160
+	statusEffectBuffDefOff   = 0x08
+	statusEffectTotalTimeOff = 0x18
+	statusEffectTimeLeftOff  = 0x1C
+	statusEffectSourceIDOff  = 0x28
+	statusEffectChargesOff   = 0x40
+	buffDefNamePtrOff        = 0x00
+	buffDefSpiritFlatOff     = 0xC4
+	buffDefSpiritPctOff      = 0x1F4
+	buffDefNameMaxBytes      = 128
 
 	maxPlayerBuffs  = 64
 	maxMonsterBuffs = 32
 )
 
 type PlayerBuff struct {
-	Template    string `json:"template"`
-	TemplateVT  string `json:"template_vt"`
-	Reserved    int    `json:"reserved,omitempty"`
-	ReservedPct int    `json:"reserved_pct,omitempty"`
-	Label       string `json:"label,omitempty"`
-	Name        string `json:"name,omitempty"`
-	Description string `json:"description,omitempty"`
-	Invisible   bool   `json:"invisible,omitempty"`
+	Template    string  `json:"template"`
+	TemplateVT  string  `json:"template_vt"`
+	Reserved    int     `json:"reserved,omitempty"`
+	ReservedPct int     `json:"reserved_pct,omitempty"`
+	Label       string  `json:"label,omitempty"`
+	Name        string  `json:"name,omitempty"`
+	Description string  `json:"description,omitempty"`
+	Invisible   bool    `json:"invisible,omitempty"`
+	TimeLeft    float32 `json:"time_left,omitempty"`
+	TotalTime   float32 `json:"total_time,omitempty"`
+	Charges     int     `json:"charges,omitempty"`
+	SourceID    uint32  `json:"source_id,omitempty"`
+	Permanent   bool    `json:"permanent,omitempty"`
+}
+
+func buffDuration(f float32) (float32, bool) {
+	d := float64(f)
+	if math.IsInf(d, 0) || math.IsNaN(d) || f < 0 || f > 1e7 {
+		return 0, true
+	}
+	return f, false
+}
+
+func fillBuffTiming(r Reader, se uint64, pb *PlayerBuff) {
+	pb.TimeLeft, pb.Permanent = buffDuration(ReadFloat32(r, se+statusEffectTimeLeftOff))
+	if tt, perm := buffDuration(ReadFloat32(r, se+statusEffectTotalTimeOff)); !perm {
+		pb.TotalTime = tt
+	}
+	pb.Charges = int(ReadU32(r, se+statusEffectChargesOff) & 0xFFFF)
+	pb.SourceID = ReadU32(r, se+statusEffectSourceIDOff)
 }
 
 func ReadPlayerBuffs(r Reader, entity uint64, spiritMax int) ([]PlayerBuff, int) {
@@ -87,6 +116,7 @@ func readBuffsFromEntity(r Reader, entity uint64, spiritMax, cap int) ([]PlayerB
 				pb.Invisible = entry.Invisible
 			}
 		}
+		fillBuffTiming(r, se, &pb)
 		out = append(out, pb)
 	}
 	return out, total

@@ -5,11 +5,6 @@ import (
 	"strings"
 )
 
-// Flask belt resolution for charge-aware auto-flask. The belt is a small inventory
-// container (<=5 wide, <=2 tall) holding only flask/charm items; each flask sits at
-// grid x = key-slot - 1 (x=0 -> key '1' = Life flask, x=1 -> key '2' = Mana flask).
-// Verified live 2026-06-10.
-
 const (
 	flaskBeltMaxWidth  = 5
 	flaskBeltMaxHeight = 2
@@ -17,9 +12,6 @@ const (
 	containerHeightOff = 0x154
 )
 
-// ResolveFlaskBelt BFS-walks the player Inventories component for the flask belt
-// container. Returns 0 if not found. The container is stable within a session —
-// cache it and only re-resolve when a charge read fails (zone reload).
 func ResolveFlaskBelt(r Reader, gsoSlot uint64) uint64 {
 	lp, err := ResolveLocalPlayer(r, gsoSlot)
 	if err != nil || lp == 0 {
@@ -79,8 +71,6 @@ func ResolveFlaskBelt(r Reader, gsoSlot uint64) uint64 {
 	return 0
 }
 
-// isFlaskBelt reports whether a container holds at least one flask and only
-// flask/charm items (rules out the backpack, which also carries flasks).
 func isFlaskBelt(r Reader, sentinel uint64) bool {
 	hasFlask, foreign := false, false
 	WalkInventoryMap(r, sentinel, func(node uint64) {
@@ -104,7 +94,6 @@ func isFlaskBelt(r Reader, sentinel uint64) bool {
 	return hasFlask && !foreign
 }
 
-// FlaskChargesInSlot reads the Charges of the flask at belt grid x = slot-1.
 func FlaskChargesInSlot(r Reader, beltContainer uint64, slot int) (FlaskCharges, bool) {
 	if beltContainer < HeapLo || beltContainer >= HeapHi || slot < 1 {
 		return FlaskCharges{}, false

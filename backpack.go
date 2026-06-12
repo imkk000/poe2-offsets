@@ -25,7 +25,7 @@ func ItemRarity(r Reader, itemEntity uint64, path string) string {
 	return "Normal"
 }
 
-const InventoryItemViewVtable uint64 = 0x14323B6C0 // 0x14323a600 -> +0x10c0 on 2026-06-09
+const InventoryItemViewVtable uint64 = 0x14323B6C0
 
 const (
 	inventoryItemViewContainerOff = 0xeb * 8
@@ -49,7 +49,7 @@ type BackpackItem struct {
 	Path     string   `json:"path"`
 	Name     string   `json:"name"`
 	Rarity   string   `json:"rarity"`
-	ModTexts []string `json:"mod_texts,omitempty"` // only filled by ReadBackpackWithMods
+	ModTexts []string `json:"mod_texts,omitempty"`
 }
 
 type Backpack struct {
@@ -200,14 +200,10 @@ func countInventoryItems(r Reader, sentinel uint64) int {
 	return count
 }
 
-// ReadBackpack reads a container's grid + items WITHOUT mod texts (fast — this is in
-// the stash overlay's per-tick reread path).
 func ReadBackpack(r Reader, container uint64) (Backpack, bool) {
 	return readBackpack(r, container, false)
 }
 
-// ReadBackpackWithMods also reads each item's resolved mod texts (prefix + suffix +
-// implicit, as display strings). Costlier; use for the player backpack only.
 func ReadBackpackWithMods(r Reader, container uint64) (Backpack, bool) {
 	return readBackpack(r, container, true)
 }
@@ -258,15 +254,12 @@ func readBackpack(r Reader, container uint64, withMods bool) (Backpack, bool) {
 			}
 			rarity = ItemRarity(r, itemPtr, path)
 			if withMods {
-				// the mod-row path (ModsComponent +0xA0, 5 slots) reads real mod IDs +
-				// slot for every rarity; the stat-store path (0x148/0x3B8) is stale
-				// (0x3B8 dead) on the current build. Mod IDs are searchable and the
-				// right primitive for pricing. Verified live 2026-06-07.
+
 				if mc := ResolveComponentByName(r, itemPtr, "Mods"); mc != 0 {
 					for _, e := range ReadItemModEntries(r, mc) {
-						modTexts = append(modTexts, e.ID) // covers implicit+explicit, all rarities
+						modTexts = append(modTexts, e.ID)
 					}
-					texts, _ := ReadItemMods(r, mc, rarity) // human stat text (natural-language search)
+					texts, _ := ReadItemMods(r, mc, rarity)
 					modTexts = append(modTexts, texts...)
 				}
 			}
@@ -314,8 +307,6 @@ func (b *Backpack) RenderBinary() []string {
 	return out
 }
 
-// WalkInventoryMap visits each item node of a container's item map (the std::map at
-// container+0x188). Exported for offset-discovery tooling.
 func WalkInventoryMap(r Reader, sentinel uint64, visit func(node uint64)) {
 	walkInventoryMap(r, sentinel, visit)
 }

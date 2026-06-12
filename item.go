@@ -6,10 +6,10 @@ import (
 )
 
 const (
-	rarityVtable         = 0x1434364B8 // Mods component instance vtable; re-anchored live 2026-06-12 (was 0x143395038). ctor FUN_14211c830, size 0x270. Resolve fresh via script/probmodsvt.
+	rarityVtable         = 0x1434364E8
 	rarityOffset         = 0x94
 	identifiedOffset     = 0x90
-	sanctifiedOffset     = 0x92 // Mods comp flags byte (verified live: 2 sanctified wands vs 13 others)
+	sanctifiedOffset     = 0x92
 	itemLevelOffset      = 0x240
 	reqLevelOffset       = 0x244
 	itemTierOffset       = 0x248
@@ -19,29 +19,24 @@ const (
 	modArrayStride       = 0x40
 	modArrayValue0Off    = 0x18
 	modArrayModsPtrOff   = 0x28
-	modGenerationTypeOff = 0x6A        // byte in the Mods.dat row: 1=prefix, 2=suffix (3=implicit)
-	stackVtable          = 0x1433F4418 // was 0x143041828, drifted 2026-06-07
+	modGenerationTypeOff = 0x6A
+	stackVtable          = 0x1433F4418
 	stackOffset          = 0x18
-	worldItemBaseOff     = 0x28 // "WorldItem" comp -> inner Metadata/Items/ entity
-	renderItemArtOff     = 0x28 // RenderItem comp: char* to the 2D art .dds (IVI art column)
-	modsNameVecOff       = 0x18 // Mods comp: StdVector<WordsRow*> (rare/unique name words)
-	wordsRowTextOff      = 0x30 // Words.dat row: char* to the (wide) word text
+	worldItemBaseOff     = 0x28
+	renderItemArtOff     = 0x28
+	modsNameVecOff       = 0x18
+	wordsRowTextOff      = 0x30
 
-	// Base component flags byte (verified live 2026-06-07 over 11 corrupt / 8 clean
-	// mixed-type items). bit0 = corrupted, bit6 = twice-corrupted. bit4 is a
-	// distinct, still-unidentified flag (set on some once-corrupt items).
 	baseFlagsOff      = 0xC7
 	corruptedBit      = 0x01
 	twiceCorruptedBit = 0x40
 
-	// Mods component (verified live 2026-06-10). Item-granted skills hang here.
-	grantedSkillsOff = 0x210 // StdVector<SkillGem entity*>
-	skillGemLevelOff = 0x24  // SkillGem comp: gem level
+	grantedSkillsOff = 0x210
+	skillGemLevelOff = 0x24
 
-	// Charges component (flasks/charms; verified live 2026-06-10).
-	chargesInternalPtrOff = 0x10 // -> ChargesInternal
-	chargesCurrentOff     = 0x18 // current charges
-	chargesPerUseOff      = 0x18 // within ChargesInternal: charge cost per use
+	chargesInternalPtrOff = 0x10
+	chargesCurrentOff     = 0x18
+	chargesPerUseOff      = 0x18
 )
 
 type GrantedSkill struct {
@@ -49,16 +44,11 @@ type GrantedSkill struct {
 	Level int    `json:"level,omitempty"`
 }
 
-// FlaskCharges is the live charge state of a flask/charm (Charges component).
 type FlaskCharges struct {
 	Current int `json:"current"`
-	PerUse  int `json:"per_use"` // charge cost per sip; Current/PerUse = sips available
+	PerUse  int `json:"per_use"`
 }
 
-// ReadItemCharges reads a flask/charm's live charges from its Charges component
-// (+0x18 current; +0x10 -> internal -> +0x18 per-use cost). Verified live 2026-06-10
-// (mana flask cur 75 / per-use 10).
-// Returns false for items with no Charges component (currency, gear).
 func ReadItemCharges(r Reader, itemEntity uint64) (FlaskCharges, bool) {
 	ch := ResolveComponentByName(r, itemEntity, "Charges")
 	if ch == 0 {
@@ -71,9 +61,6 @@ func ReadItemCharges(r Reader, itemEntity uint64) (FlaskCharges, bool) {
 	return out, true
 }
 
-// ReadItemGrantedSkills reads the item-granted skills from an item entity's Mods
-// component (+0x210 StdVector of SkillGem entity pointers). E.g. a wand granting
-// Mana Drain, a sceptre granting Fulmination. Each entry resolves its gem level.
 func ReadItemGrantedSkills(r Reader, owner uint64) []GrantedSkill {
 	mods := ResolveComponentByName(r, owner, "Mods")
 	if mods == 0 {
@@ -104,8 +91,6 @@ func ReadItemGrantedSkills(r Reader, owner uint64) []GrantedSkill {
 	return out
 }
 
-// ReadItemCorruption reads the corrupted / twice-corrupted flags from the Base
-// component of an item entity (owner). twice implies corrupted.
 func ReadItemCorruption(r Reader, owner uint64) (corrupted, twice bool) {
 	base := ResolveComponentByName(r, owner, "Base")
 	if base == 0 {
@@ -115,8 +100,6 @@ func ReadItemCorruption(r Reader, owner uint64) (corrupted, twice bool) {
 	return b&corruptedBit != 0, b&twiceCorruptedBit != 0
 }
 
-// ReadItemSanctified reads the sanctified flag from the Mods component flags byte
-// (+0x92, adjacent to identified +0x90 / rarity +0x94) of an item entity (owner).
 func ReadItemSanctified(r Reader, owner uint64) bool {
 	mods := ResolveComponentByName(r, owner, "Mods")
 	if mods == 0 {
@@ -125,11 +108,6 @@ func ReadItemSanctified(r Reader, owner uint64) bool {
 	return ReadByte(r, mods+sanctifiedOffset) != 0
 }
 
-// IsVaalCorrupted reports whether corruption altered the item's mods — a
-// Corruption* implicit/enchant or a mutated Vaal explicit (e.g. The Vertex's
-// UniqueMutatedVaalGlobalSkillGemLevel = +4 to all skills). Distinct from a
-// "normal" corruption that adds no mod. Caller must already know the item is
-// corrupted.
 func IsVaalCorrupted(mods []ItemModEntry) bool {
 	for _, m := range mods {
 		if strings.HasPrefix(m.ID, "Corruption") || strings.Contains(m.ID, "Vaal") || strings.Contains(m.ID, "Mutated") {
@@ -203,10 +181,7 @@ func ReadWorldItemDetails(r Reader, worldItem uint64) ItemDetails {
 		d.Mods = ReadItemModEntries(r, comp)
 	}
 	d.VaalCorrupted = d.Corrupted && IsVaalCorrupted(d.Mods)
-	// Base requirements + defenses are data-derived (a ground/unidentified item
-	// carries empty Armour/AttributeRequirements components — the values only resolve
-	// from the base item type). Quality-adjust defenses. Verified live 2026-06-10
-	// (Shamanistic Leggings: str44 int44 armour123 es34 matched the on-screen tooltip).
+
 	quality := 0
 	if q := ResolveComponentByName(r, innerItem, "Quality"); q != 0 {
 		quality = readU32(r, q+0x18)
@@ -245,14 +220,10 @@ func ReadVecCount(r Reader, vecBeginAddr uint64) int {
 	return n
 }
 
-// WorldItemInner returns the real Metadata/Items/ entity wrapped by a ground
-// (WorldItem) entity, or 0. Use it to price/inspect a hovered ground item.
 func WorldItemInner(r Reader, worldItem uint64) uint64 { return walkToInnerItem(r, worldItem) }
 
 func walkToInnerItem(r Reader, worldItem uint64) uint64 {
-	// The ground-item wrapper carries a "WorldItem" component whose +0x28 points to
-	// the real Metadata/Items/ entity. Resolve by NAME (the old worldItemBaseVT
-	// hardcode drifts every patch: 0x14321A9B8 -> 0x143222D90 on 2026-06-07).
+
 	comp := ResolveComponentByName(r, worldItem, "WorldItem")
 	if comp == 0 {
 		return 0
@@ -264,10 +235,6 @@ func walkToInnerItem(r Reader, worldItem uint64) uint64 {
 	return 0
 }
 
-// ReadItemVisualArt returns the item's 2D art .dds path (the ItemVisualIdentity
-// art column) read straight from the RenderItem component. For uniques this is
-// the unique-specific art (e.g. .../Uniques/EnfoldingDawn.dds), giving a stable
-// data-grounded identity that the base metadata path does not.
 func ReadItemVisualArt(r Reader, owner uint64) string {
 	ri := ResolveComponentByName(r, owner, "RenderItem")
 	if ri == 0 {
@@ -280,13 +247,6 @@ func ReadItemVisualArt(r Reader, owner uint64) string {
 	return readWideString(r, p, 512)
 }
 
-// ReadItemGeneratedName returns the item's canonical generated name (rare 2-word
-// name OR unique name) straight from the Mods component. Mods+0x18 is a
-// StdVector<WordsRow*>; each word's text is the wide string at *(row+0x30). The
-// words carry their own spacing (suffix words have a leading space), so they are
-// concatenated then trimmed. Verified live: "Enfolding Dawn" (unique), "Morbid
-// Tether"/"Viper Star"/"Soul Solace" (rares). Empty for Normal/Magic. This is the
-// real game data — supersedes the .dds/UniqueArtName heuristic for naming.
 func ReadItemGeneratedName(r Reader, modsComp uint64) string {
 	begin := ReadU64(r, modsComp+modsNameVecOff)
 	end := ReadU64(r, modsComp+modsNameVecOff+8)
@@ -308,11 +268,6 @@ func ReadItemGeneratedName(r Reader, modsComp uint64) string {
 	return strings.TrimSpace(b.String())
 }
 
-// UniqueArtName derives a unique's display name from its visual-art path. Only
-// unique art lives under .../Uniques/<Name>.dds; the basename camelCase-splits to
-// the in-game name (e.g. EnfoldingDawn -> "Enfolding Dawn"). Returns "" for
-// non-unique art. Heuristic: matches the trade name for the vast majority of
-// uniques; a few stylized names ("The ...") need the words table to be exact.
 func UniqueArtName(visualArt string) string {
 	_, base, found := strings.Cut(visualArt, "/Uniques/")
 	if !found {
@@ -357,9 +312,7 @@ func readWideString(r Reader, addr uint64, maxBytes int) string {
 }
 
 func readItemStack(r Reader, innerItem uint64) int {
-	// Resolve by NAME — the Stack vtable drifts every patch, which silently zeroed
-	// currency/gold stack counts. Verified live 2026-06-10 (ground gold 1595/157/207
-	// matched the on-screen piles). Stack count is at the component's +0x18.
+
 	comp := ResolveComponentByName(r, innerItem, "Stack")
 	if comp == 0 {
 		return 0

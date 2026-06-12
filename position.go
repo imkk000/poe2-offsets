@@ -35,9 +35,27 @@ func ReadEntityPos(r Reader, entity uint64) (float32, float32, bool) {
 }
 
 const (
-	renderPosXOff = 0x138
-	renderPosYOff = 0x13C
+	renderPosXOff       = 0x138
+	renderPosYOff       = 0x13C
+	renderBearingOff    = 0x188
+	renderVisualSizeOff = 0x3F5
 )
+
+func ReadEntityBearing(r Reader, entity uint64) (float32, bool) {
+	comp := ResolveComponentByName(r, entity, "Render")
+	if comp == 0 {
+		return 0, false
+	}
+	return ReadFloat32(r, comp+renderBearingOff), true
+}
+
+func ReadEntityVisualSize(r Reader, entity uint64) (byte, bool) {
+	comp := ResolveComponentByName(r, entity, "Render")
+	if comp == 0 {
+		return 0, false
+	}
+	return ReadByte(r, comp+renderVisualSizeOff), true
+}
 
 func readEntityPosViaRender(r Reader, entity uint64) (float32, float32, bool) {
 	comp := ResolveComponentByName(r, entity, "Render")
