@@ -22,9 +22,12 @@ func ReadActorTarget(r Reader, entity uint64) uint64 {
 	return tgt
 }
 
-// Movement state. Offsets from GGG's GameWorld GetMovementDestination getter
-// (FUN_141f78900): the entity's Positioned/Movement sub-object at entity+0x98 holds
-// move speed, a moving flag, the destination grid coords, and the current world position.
+// Movement state. Offsets from GGG's GetMovementDestination getter, re-confirmed on the
+// 2026-06-12 patch at FUN_141f9c070 (assert "GetMovementDestination: Calling object is not
+// moving"): the entity's Positioned/Movement sub-object at entity+0x98 holds move speed, a
+// moving flag, the destination grid coords, and the current world position. The getter gates
+// "moving" on speed!=0 AND moveFlag sign-bit clear, then returns (+0x240,+0x244) on the common
+// path; bytes +0x22d/+0x22e select an alternate coord pair (+0x23c) we don't need.
 // curX/curY at +0x490/+0x494 cross-checked live against the Render position (exact match).
 const (
 	entityPositionedOff = 0x98
