@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	rarityVtable         = 0x143395038 // Mods component vtable (was 0x142FEC308, drifted 2026-06-07)
+	rarityVtable         = 0x1434364B8 // Mods component instance vtable; re-anchored live 2026-06-12 (was 0x143395038). ctor FUN_14211c830, size 0x270. Resolve fresh via script/probmodsvt.
 	rarityOffset         = 0x94
 	identifiedOffset     = 0x90
 	sanctifiedOffset     = 0x92 // Mods comp flags byte (verified live: 2 sanctified wands vs 13 others)
