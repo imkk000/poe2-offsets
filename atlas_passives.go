@@ -3,8 +3,6 @@ package gamestate
 import "encoding/binary"
 
 const (
-	subDataHop1      = 0x2B0
-	subDataHop2      = 0x38
 	atlasPassivesOff = 0x170
 	atlasAllocMax    = 4096
 )
@@ -14,32 +12,44 @@ func resolvePerPlayerSubData(r Reader, gsoSlot uint64) uint64 {
 	if err != nil {
 		return 0
 	}
-	p1 := ReadU64(r, sd+subDataHop1)
+	p1 := ReadU64(r, sd+goldHop1Off)
 	if p1 < HeapLo || p1 >= HeapHi {
 		return 0
 	}
-	sub := ReadU64(r, p1+subDataHop2)
+	p2 := ReadU64(r, p1+goldHop2Off)
+	if p2 < HeapLo || p2 >= HeapHi {
+		return 0
+	}
+	sub := ReadU64(r, p2+goldHop3Off)
 	if sub < HeapLo || sub >= HeapHi {
 		return 0
 	}
 	return sub
 }
 
-func ReadAllocatedAtlasPassives(r Reader, gsoSlot uint64) []int {
+func atlasPassiveVector(r Reader, gsoSlot uint64) (begin uint64, count int, ok bool) {
 	sub := resolvePerPlayerSubData(r, gsoSlot)
 	if sub == 0 {
-		return nil
+		return 0, 0, false
 	}
-	begin := ReadU64(r, sub+atlasPassivesOff)
+	begin = ReadU64(r, sub+atlasPassivesOff)
 	end := ReadU64(r, sub+atlasPassivesOff+8)
 	if begin == end {
-		return nil
+		return 0, 0, true
 	}
 	if begin < HeapLo || begin >= HeapHi || end <= begin || (end-begin)%2 != 0 {
-		return nil
+		return 0, 0, false
 	}
-	count := int((end - begin) / 2)
+	count = int((end - begin) / 2)
 	if count > atlasAllocMax {
+		return 0, 0, false
+	}
+	return begin, count, true
+}
+
+func ReadAllocatedAtlasPassives(r Reader, gsoSlot uint64) []int {
+	begin, count, ok := atlasPassiveVector(r, gsoSlot)
+	if !ok || count == 0 {
 		return nil
 	}
 	buf, err := r.ReadBytes(begin, count*2)
@@ -54,14 +64,6 @@ func ReadAllocatedAtlasPassives(r Reader, gsoSlot uint64) []int {
 }
 
 func AtlasPassiveVectorOK(r Reader, gsoSlot uint64) bool {
-	sub := resolvePerPlayerSubData(r, gsoSlot)
-	if sub == 0 {
-		return false
-	}
-	begin := ReadU64(r, sub+atlasPassivesOff)
-	end := ReadU64(r, sub+atlasPassivesOff+8)
-	if begin == end {
-		return true
-	}
-	return begin >= HeapLo && begin < HeapHi && end > begin && (end-begin)%2 == 0
+	_, _, ok := atlasPassiveVector(r, gsoSlot)
+	return ok
 }
