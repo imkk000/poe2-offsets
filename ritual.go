@@ -29,6 +29,11 @@ type RitualReward struct {
 	OriginalCost int           `json:"originalCost,omitempty"`
 	Deferred     bool          `json:"deferred,omitempty"`
 	Hidden       bool          `json:"hidden,omitempty"`
+	// ScreenX/Y/W/H are the reward slot's on-screen rect in UI design space (2560x1600).
+	ScreenX float32 `json:"screenX,omitempty"`
+	ScreenY float32 `json:"screenY,omitempty"`
+	ScreenW float32 `json:"screenW,omitempty"`
+	ScreenH float32 `json:"screenH,omitempty"`
 }
 
 type ritualCostEntry struct {
@@ -170,6 +175,10 @@ func ReadRitualState(r Reader, regions []HeapRegion) (rewards []RitualReward, po
 		}
 		seen[item] = true
 		rr := RitualReward{Item: ritualRewardItem(r, item), RewardKey: ReadU32(r, v+ritualRewardKeyOff)}
+		if x, y, ok := ElementAbsPos(r, v); ok {
+			rr.ScreenW, rr.ScreenH = ElementSize(r, v)
+			rr.ScreenX, rr.ScreenY = x, y
+		}
 		trib.apply(&rr)
 		out = append(out, rr)
 	}
