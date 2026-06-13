@@ -25,7 +25,7 @@ func ItemRarity(r Reader, itemEntity uint64, path string) string {
 	return "Normal"
 }
 
-const InventoryItemViewVtable uint64 = 0x14323B6C0
+const InventoryItemViewVtable uint64 = 0x1432dc1d8
 
 const (
 	inventoryItemViewContainerOff = 0xeb * 8
