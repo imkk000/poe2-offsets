@@ -8,7 +8,7 @@ import (
 	"sync/atomic"
 )
 
-const HoverTrackerVtable uint64 = 0x142D71818
+const HoverTrackerVtable uint64 = 0x142E2FD78
 
 const (
 	hoverTrackerViewOff    = 0x50
