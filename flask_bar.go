@@ -1,6 +1,6 @@
 package gamestate
 
-const FlaskBarVtable uint64 = 0x142F54828
+const FlaskBarVtable uint64 = 0x142F53810
 
 const (
 	flaskBarMaxWalk   = 60000
