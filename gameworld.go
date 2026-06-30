@@ -27,7 +27,7 @@ func ResolveGameWorld(r Reader, gsoSlot uint64) (uint64, error) {
 	}
 	serverData := ReadU64(r, area+areaInstanceServerDataOff)
 	if !validWideHeap(serverData) {
-		return 0, errors.New("ServerData null at AreaInstance+0x580")
+		return 0, errors.New("ServerData null at AreaInstance+0x598")
 	}
 	gw := ReadU64(r, serverData+serverDataGameWorldOff)
 	if !validWideHeap(gw) {
@@ -88,7 +88,7 @@ func GetMapStat(r Reader, gw uint64, statID uint32) (int32, bool) {
 }
 
 const (
-	areaInstanceServerDataOff = 0x580
+	areaInstanceServerDataOff = 0x598
 )
 
 func validWideHeap(p uint64) bool {
