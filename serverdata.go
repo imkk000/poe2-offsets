@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	areaServerDataOff   = 0x598
+	areaServerDataOff   = 0x5A0
 	serverIconStride    = 0xC0
 	serverIconRowOff    = 0x00
 	serverIconIDOff     = 0x10

@@ -11,14 +11,14 @@ const (
 
 	ElementParentOff = 0xB8
 
-	AreaInstanceEntityListOff = 0x6C8
+	AreaInstanceEntityListOff = 0x6D0
 	EntityListAwakeHeadOff    = 0x10
 	EntityListAwakeSizeOff    = 0x18
 	EntityListSleepHeadOff    = 0x20
 	EntityListSleepSizeOff    = 0x28
 
-	AreaInstancePlayerInfoOff  = 0x598
-	AreaInstanceLocalPlayerOff = 0x5B8
+	AreaInstancePlayerInfoOff  = 0x5A0
+	AreaInstanceLocalPlayerOff = 0x5C0
 )
 
 const uiRootMaxParentHops = 64
