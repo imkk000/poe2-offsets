@@ -47,13 +47,13 @@ func ReadAreaInfo(r Reader, areaInstance uint64) AreaInfo {
 }
 
 const (
-	terrainWidthOff  = 0x928
-	terrainHeightOff = 0x92C
-	terrainLayer0Off = 0x970
-	terrainLayer1Off = 0x988
-	terrainLayer2Off = 0x9A0
-	terrainLayer3Off = 0x9B8
-	terrainStrideOff = 0x9D0
+	terrainWidthOff  = 0x958
+	terrainHeightOff = 0x95C
+	terrainLayer0Off = 0x9A0
+	terrainLayer1Off = 0x9B8
+	terrainLayer2Off = 0x9D0
+	terrainLayer3Off = 0x9E8
+	terrainStrideOff = 0xA00
 )
 
 func ReadTerrainInfo(r Reader, areaInstance uint64) TerrainInfo {
