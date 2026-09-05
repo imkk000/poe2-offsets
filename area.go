@@ -22,9 +22,9 @@ type TerrainInfo struct {
 
 func ReadAreaInfo(r Reader, areaInstance uint64) AreaInfo {
 	var info AreaInfo
-	info.Level = int(ReadByte(r, areaInstance+0xC4))
-	info.Hash = ReadU32(r, areaInstance+0x11C)
-	infoStruct := ReadU64(r, areaInstance+0xA0)
+	info.Level = int(ReadByte(r, areaInstance+0xBC))
+	info.Hash = ReadU32(r, areaInstance+0x114)
+	infoStruct := ReadU64(r, areaInstance+0x98)
 	if infoStruct < HeapLo || infoStruct >= HeapHi {
 		return info
 	}

@@ -78,7 +78,7 @@ func ReadStatsComponent(r Reader, statsComp uint64) (PlayerStats, bool) {
 	gotFireCap, gotColdCap, gotLightCap, gotChaosCap := false, false, false, false
 	gotFireUC, gotColdUC, gotLightUC, gotChaosUC := false, false, false, false
 	gotStr, gotDex, gotInt := false, false, false
-	if !walkStatsVec(r, statsComp, statsItemsPtrOff, func(key uint32, val int32) {
+	apply := func(key uint32, val int32) {
 		switch key {
 		case keyHPMax:
 			s.HPMax = int(val)
@@ -121,7 +121,14 @@ func ReadStatsComponent(r Reader, statsComp uint64) (PlayerStats, bool) {
 		case keyChaosResUC:
 			s.ChaosUC, gotChaosUC = int(val), true
 		}
-	}) {
+	}
+
+	// The local player's canonical stats (life/mana/ES/armour/evasion/attributes)
+	// live in the base vec; the items vec only carries gear-derived entries and is
+	// all a remote player exposes. Both are walked, base last so it wins.
+	okItems := walkStatsVec(r, statsComp, statsItemsPtrOff, apply)
+	okBase := walkStatsVec(r, statsComp, statsBaseResistsPtrOff, apply)
+	if !okItems && !okBase {
 		return s, false
 	}
 

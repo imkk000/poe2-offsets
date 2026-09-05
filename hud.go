@@ -6,17 +6,17 @@ import (
 )
 
 const (
-	hudRootMapParentSlot    uint64 = 0x7C8
-	hudRootSizeOff          uint64 = 0x288
-	hudRootHeightOff        uint64 = 0x28C
-	mapParentMiniMapPtrOff  uint64 = 0x388
-	mapParentLargeMapPtrOff uint64 = 0x380
-	mapViewWidthOff         uint64 = 0x288
-	mapViewHeightOff        uint64 = 0x28C
+	hudRootMapParentSlot    uint64 = 0x7B0
+	hudRootSizeOff          uint64 = 0x270
+	hudRootHeightOff        uint64 = 0x274
+	mapParentMiniMapPtrOff  uint64 = 0x370
+	mapParentLargeMapPtrOff uint64 = 0x368
+	mapViewWidthOff         uint64 = 0x270
+	mapViewHeightOff        uint64 = 0x274
 
-	mapViewShiftXOff uint64 = 0x368
-	mapViewShiftYOff uint64 = 0x36C
-	mapViewZoomOff   uint64 = 0x3A8
+	mapViewShiftXOff uint64 = 0x350
+	mapViewShiftYOff uint64 = 0x354
+	mapViewZoomOff   uint64 = 0x390
 )
 
 type HUDChain struct {

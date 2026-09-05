@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	serverDataGameWorldOff = 0x2170
+	serverDataGameWorldOff = 0x20F0
 	gameWorldMapStatOff    = 0x130
 	mapStatBeginOff        = 0x08
 	mapStatEndOff          = 0x10
@@ -31,7 +31,7 @@ func ResolveGameWorld(r Reader, gsoSlot uint64) (uint64, error) {
 	}
 	gw := ReadU64(r, serverData+serverDataGameWorldOff)
 	if !validWideHeap(gw) {
-		return 0, errors.New("GameWorld null at ServerData+0x2170")
+		return 0, errors.New("GameWorld null at ServerData+0x20F0")
 	}
 	return gw, nil
 }
