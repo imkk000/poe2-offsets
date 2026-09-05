@@ -6,7 +6,7 @@ import (
 )
 
 const (
-	areaServerDataOff   = 0x5A0
+	areaServerDataOff   = 0x5B0
 	serverIconStride    = 0xC0
 	serverIconRowOff    = 0x00
 	serverIconIDOff     = 0x10
@@ -39,6 +39,10 @@ func readServerIconName(r Reader, row uint64) string {
 	return readUTF16String(r, str, 64)
 }
 
+func ResolveServerData(r Reader, gsoSlot uint64) (uint64, error) {
+	return resolveServerData(r, gsoSlot)
+}
+
 func resolveServerData(r Reader, gsoSlot uint64) (uint64, error) {
 	area, err := ResolveAreaInstance(r, gsoSlot)
 	if err != nil {
@@ -52,30 +56,29 @@ func resolveServerData(r Reader, gsoSlot uint64) (uint64, error) {
 }
 
 const (
-	goldHop1Off   = 0x60
-	goldHop2Off   = 0x608
-	goldHop3Off   = 0x790
-	playerGoldOff = 0x798
+	goldWalletOff = 0x430
+	goldLedgerOff = 0x1B0
+	playerGoldOff = 0x39D0
 )
 
 func ReadPlayerGold(r Reader, gsoSlot uint64) (int, bool) {
-	sd, err := resolveServerData(r, gsoSlot)
+	player, err := ResolveLocalPlayer(r, gsoSlot)
 	if err != nil {
 		return 0, false
 	}
-	p1 := ReadU64(r, sd+goldHop1Off)
-	if !serverInHeap(p1) {
+	comp := ResolveComponentByName(r, player, "Player")
+	if !serverInHeap(comp) {
 		return 0, false
 	}
-	p2 := ReadU64(r, p1+goldHop2Off)
-	if !serverInHeap(p2) {
+	wallet := ReadU64(r, comp+goldWalletOff)
+	if !serverInHeap(wallet) {
 		return 0, false
 	}
-	p3 := ReadU64(r, p2+goldHop3Off)
-	if !serverInHeap(p3) {
+	ledger := ReadU64(r, wallet+goldLedgerOff)
+	if !serverInHeap(ledger) {
 		return 0, false
 	}
-	return int(ReadU32(r, p3+playerGoldOff)), true
+	return int(ReadU32(r, ledger+playerGoldOff)), true
 }
 
 func readServerIconsAt(r Reader, serverData, off uint64) ([]ServerMinimapIcon, bool) {

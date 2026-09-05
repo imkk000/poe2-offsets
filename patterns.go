@@ -1,7 +1,7 @@
 package gamestate
 
 const (
-	GsoPattern  = "48 39 2D ?? ?? ?? ?? 0F 85 16 01 00 00"
+	GsoPattern  = "48 39 2D ?? ?? ?? ?? 0F 85 ?? 01 00 00"
 	GsoDispAt   = 3
 	GsoInstrEnd = 7
 	GsoAnchor   = "Unable to get InGameState"

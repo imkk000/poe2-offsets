@@ -5,7 +5,7 @@ import (
 	"encoding/binary"
 )
 
-const ItemEntityVtable uint64 = 0x14349ACB0
+const ItemEntityVtable uint64 = 0x143512580
 
 func ScanItemEntities(r Reader, regions []HeapRegion) []uint64 {
 	needle := make([]byte, 8)

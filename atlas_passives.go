@@ -5,6 +5,10 @@ import "encoding/binary"
 const (
 	atlasPassivesOff = 0x170
 	atlasAllocMax    = 4096
+
+	subDataHop1Off = 0x60
+	subDataHop2Off = 0x608
+	subDataHop3Off = 0x790
 )
 
 func resolvePerPlayerSubData(r Reader, gsoSlot uint64) uint64 {
@@ -12,15 +16,15 @@ func resolvePerPlayerSubData(r Reader, gsoSlot uint64) uint64 {
 	if err != nil {
 		return 0
 	}
-	p1 := ReadU64(r, sd+goldHop1Off)
+	p1 := ReadU64(r, sd+subDataHop1Off)
 	if p1 < HeapLo || p1 >= HeapHi {
 		return 0
 	}
-	p2 := ReadU64(r, p1+goldHop2Off)
+	p2 := ReadU64(r, p1+subDataHop2Off)
 	if p2 < HeapLo || p2 >= HeapHi {
 		return 0
 	}
-	sub := ReadU64(r, p2+goldHop3Off)
+	sub := ReadU64(r, p2+subDataHop3Off)
 	if sub < HeapLo || sub >= HeapHi {
 		return 0
 	}

@@ -3,7 +3,7 @@ package gamestate
 import "errors"
 
 const (
-	GameStateInGameStateOff    = 0x88
+	GameStateInGameStateOff    = 0x90
 	InGameStateAreaInstanceOff = 0x290
 	InGameStateCameraOff       = 0x368
 	InGameStateUiRootOff       = 0x2F0
@@ -11,14 +11,14 @@ const (
 
 	ElementParentOff = 0xB8
 
-	AreaInstanceEntityListOff = 0x6D0
+	AreaInstanceEntityListOff = 0x6E0
 	EntityListAwakeHeadOff    = 0x10
 	EntityListAwakeSizeOff    = 0x18
 	EntityListSleepHeadOff    = 0x20
 	EntityListSleepSizeOff    = 0x28
 
-	AreaInstancePlayerInfoOff  = 0x5A0
-	AreaInstanceLocalPlayerOff = 0x5C0
+	AreaInstancePlayerInfoOff  = 0x5B0
+	AreaInstanceLocalPlayerOff = 0x5D0
 )
 
 const uiRootMaxParentHops = 64
@@ -29,6 +29,18 @@ func ResolveGSO(r Reader, gsoSlot uint64) (uint64, error) {
 		return 0, errors.New("gso null (game not in-game yet?)")
 	}
 	return gso, nil
+}
+
+// GsoSlotResolves reports whether a candidate slot dereferences into a live
+// InGameState. Only meaningful once the game is past the login screen, so a
+// false result is inconclusive rather than a rejection.
+func GsoSlotResolves(r Reader, gsoSlot uint64) bool {
+	gso := ReadU64(r, gsoSlot)
+	if gso < HeapLo || gso >= HeapHi {
+		return false
+	}
+	igs := ReadU64(r, gso+GameStateInGameStateOff)
+	return igs >= HeapLo && igs < HeapHi
 }
 
 func ResolveInGameState(r Reader, gsoSlot uint64) (uint64, error) {
