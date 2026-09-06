@@ -1,6 +1,9 @@
 package gamestate
 
-import "strings"
+import (
+	"strings"
+	"time"
+)
 
 const (
 	skillIconSkillOff = 0x2F0
@@ -12,6 +15,11 @@ const (
 	skillInstStride   = 0x10
 	skillNameChainOff = 0x58
 	maxSkillInstances = 80
+
+	// findSlots walks up to skillBarMaxWalk UI nodes. When it comes up empty the
+	// cache stays invalid, so without this floor the full walk would repeat on
+	// every caller tick and burn cores for a feature that is simply unavailable.
+	skillBarRescanBackoff = 5 * time.Second
 )
 
 type SkillSlot struct {
@@ -21,7 +29,8 @@ type SkillSlot struct {
 }
 
 type SkillBarReader struct {
-	elems []uint64
+	elems    []uint64
+	nextScan time.Time
 }
 
 func NewSkillBarReader() *SkillBarReader { return &SkillBarReader{} }
@@ -32,11 +41,17 @@ func (sr *SkillBarReader) Read(r Reader, gsoSlot, actor uint64) []SkillSlot {
 		return nil
 	}
 	if !sr.cacheValid(r, names) {
+		if time.Now().Before(sr.nextScan) {
+			return nil
+		}
 		root, err := ResolveTrueUiRoot(r, gsoSlot)
 		if err != nil || root == 0 {
 			return nil
 		}
 		sr.elems = sr.findSlots(r, root, names)
+		if len(sr.elems) == 0 {
+			sr.nextScan = time.Now().Add(skillBarRescanBackoff)
+		}
 	}
 	out := make([]SkillSlot, 0, len(sr.elems))
 	for _, e := range sr.elems {
