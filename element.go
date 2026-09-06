@@ -106,9 +106,9 @@ const (
 	ElementSelfOff     uint64 = 0x08
 	ElementChildBegOff uint64 = 0x10
 	ElementChildEndOff uint64 = 0x18
-	ElementPositionOff uint64 = 0x118
-	ElementFlagsOff    uint64 = 0x180
-	ElementSizeOff     uint64 = 0x288
+	ElementPositionOff uint64 = 0x100
+	ElementFlagsOff    uint64 = 0x168
+	ElementSizeOff     uint64 = 0x270
 
 	UIDesignCanvasW = 2560.0
 	UIDesignCanvasH = 1600.0

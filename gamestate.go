@@ -96,11 +96,44 @@ func ResolveUiRoot(r Reader, gsoSlot uint64) (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-	root := ReadU64(r, igs+InGameStateUiRootOff)
-	if root == 0 {
-		return 0, errors.New("UiRoot null at IGS+0x2F0")
+	if root := ReadU64(r, igs+InGameStateUiRootOff); root >= HeapLo && root < HeapHi {
+		return root, nil
 	}
-	return root, nil
+	// The slot holding the root is not stable across restarts (it has been seen
+	// at several offsets within InGameState), so fall back to identifying the
+	// root by its design canvas, which is a fixed 2560x1600 for this client.
+	if root := scanUiRoot(r, igs); root != 0 {
+		return root, nil
+	}
+	return 0, errors.New("UiRoot not found in InGameState")
+}
+
+const (
+	uiRootScanSpan   = 0x800
+	uiRootCanvasOff  = 0x270
+	uiRootDesignW    = 2560
+	uiRootDesignH    = 1600
+	uiRootCandidates = 0x400
+)
+
+// scanUiRoot finds the root UI element by its design-canvas dimensions.
+func scanUiRoot(r Reader, igs uint64) uint64 {
+	buf, err := r.ReadBytes(igs, uiRootScanSpan)
+	if err != nil {
+		return 0
+	}
+	for off := 0; off+8 <= len(buf); off += 8 {
+		cand := ReadU64(r, igs+uint64(off))
+		if cand < HeapLo || cand >= HeapHi {
+			continue
+		}
+		w := ReadFloat32(r, cand+uiRootCanvasOff)
+		h := ReadFloat32(r, cand+uiRootCanvasOff+4)
+		if w == uiRootDesignW && h == uiRootDesignH {
+			return cand
+		}
+	}
+	return 0
 }
 
 func ResolveTrueUiRoot(r Reader, gsoSlot uint64) (uint64, error) {

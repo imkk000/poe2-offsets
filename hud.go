@@ -2,15 +2,16 @@ package gamestate
 
 import (
 	"errors"
+	"fmt"
 	"math"
 )
 
 const (
-	hudRootMapParentSlot    uint64 = 0x7B0
+	hudRootMapParentSlot    uint64 = 0x738
 	hudRootSizeOff          uint64 = 0x270
 	hudRootHeightOff        uint64 = 0x274
-	mapParentMiniMapPtrOff  uint64 = 0x370
-	mapParentLargeMapPtrOff uint64 = 0x368
+	mapParentMiniMapPtrOff  uint64 = 0x58
+	mapParentLargeMapPtrOff uint64 = 0x50
 	mapViewWidthOff         uint64 = 0x270
 	mapViewHeightOff        uint64 = 0x274
 
@@ -77,7 +78,7 @@ func ResolveHUDChain(r Reader, hudRoot uint64) (HUDChain, error) {
 	c.HUDRoot = hudRoot
 	mp := ReadU64(r, hudRoot+hudRootMapParentSlot)
 	if mp < HeapLo || mp >= HeapHi {
-		return c, errors.New("MapParent slot at HUD root +0x7C8 not a heap ptr")
+		return c, fmt.Errorf("MapParent slot at HUD root +%#x not a heap ptr", hudRootMapParentSlot)
 	}
 	c.MapParent = mp
 	c.LargeMap = ReadU64(r, mp+mapParentLargeMapPtrOff)
