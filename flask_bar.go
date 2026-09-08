@@ -1,10 +1,16 @@
 package gamestate
 
-const FlaskBarVtable uint64 = 0x142FC9520
+import "time"
+
+const FlaskBarVtable uint64 = 0x142FC8540
 
 const (
 	flaskBarMaxWalk   = 60000
 	flaskBarSlotCount = 5
+
+	// findFlaskBarByShape walks the whole UI tree; this is the floor between
+	// attempts when it comes up empty.
+	flaskBarRescanBackoff = 5 * time.Second
 )
 
 type FlaskSlot struct {
@@ -20,6 +26,10 @@ type FlaskBarReader struct {
 	elem    uint64
 	belt    uint64
 	console bool
+
+	// nextScan throttles the shape search, which walks the whole UI tree. Without
+	// it a hidden or absent bar would trigger that walk on every caller tick.
+	nextScan time.Time
 }
 
 func NewFlaskBarReader() *FlaskBarReader { return &FlaskBarReader{} }
@@ -79,11 +89,17 @@ func (fr *FlaskBarReader) resolveElem(r Reader, gsoSlot uint64) {
 		fr.console = false
 		return
 	}
+	if time.Now().Before(fr.nextScan) {
+		return
+	}
 	if fr.belt == 0 {
 		fr.belt = ResolveFlaskBelt(r, gsoSlot)
 	}
 	fr.elem = findFlaskBarByShape(r, root, beltFlaskCount(r, fr.belt))
 	fr.console = fr.elem != 0
+	if fr.elem == 0 {
+		fr.nextScan = time.Now().Add(flaskBarRescanBackoff)
+	}
 }
 
 func (fr *FlaskBarReader) elemValid(r Reader) bool {
